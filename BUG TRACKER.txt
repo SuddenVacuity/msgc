@@ -1,0 +1,37 @@
+
+KNOWN ISSUES
+
+ID: 		unique id of each issue - search to find
+VERSION:	version of the application the reprt was for
+STATUS: Reported	- the issue has been reported
+		Processing	- the issue is undergoing implications and risk assessment
+		Pending		- issue is awaiting ongoing status
+		Ongoing		- the issue is currently being worked on
+		Resolved	- the issue has been resolved
+RISK: LOW		- Ignorable with no significant repercussions
+	  MEDIUM	- Low priorty repercussions
+	  HIGH		- High priorty repercussions
+	  UNKNOWN	- Repercussions of issue are unknown
+	  CRITICAL	- Causes damages/liability
+Description of the issue
+	I: Projected implications of the issue
+	S: The solution to the issue
+
+
+***************************************************************************************************
+	ID: coreArtifact000
+	VERSION: 0.0.0
+	STATUS: Pending
+	RISK: MEDIUM
+	Graphic artifacts from flattening draw buffer to layer
+		I: Visible artifacts are created when a layer is drawn to multiple times
+		S: Switch blending method from System.Drawing.Graphics to System.Marshal.Copy
+***************************************************************************************************
+	ID: coreDraw000
+	VERSION: 0.0.0
+	STAUS: Pending
+	RISK: MEDIUM
+	Draw tools do not create lines inbetween updates
+		I: Drawing with mouse input is uneven/disconnected
+		S: Calculate a line from current point to previous point and draw along it
+***************************************************************************************************

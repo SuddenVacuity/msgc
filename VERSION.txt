@@ -1,0 +1,26 @@
+
+VERSION HISTORY
+
+added	- An added feature
+remov	- A removed feature
+issue	- id of issue - A known issue that's been logged
+fixed	- id of issue - A known issue that's been fixed
+
+v0.0.0 - Initial Commit
+	added ui - basic user interface
+	added ui - create new image
+	added ui - save image to .exe directory
+	added ui - icons for draw/erase tool
+	added ui - brush mode select
+	added ui - color selection
+	added ui - layer selection
+	issue core - coreDraw000     - Draw tools don't create lines
+	issue core - coreArtifact000 - Graphic artifacts from System.Graphics
+	added core - colors
+	added core - images
+	added core - draw buffer
+	added core - draw to buffer
+	added core - blend draw buffer to current image
+	added core - blend layers together
+	added core - layers
+	added core - draw/erase tool

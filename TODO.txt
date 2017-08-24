@@ -1,0 +1,75 @@
+
+Current Goals
+[ ] Fix graphic artifacts
+[ ] draw lines to buffer
+[ ] section main file into smaller files
+[ ] handle core files that aren't embedded
+[ ] move duplicate code into methods
+
+-------------------------------------------------------------------
+TODO Checklist
+	[ ] Pending
+	[.] In progress
+	[o] Functional
+	[x] Complete
+	[#] Never complete
+
+[o] Core
+	[o] Store image data in layers
+	[o] Take user input to draw to a buffer
+	[o] Merge buffer and image data into a single image
+	[ ] Account for image view scale
+	[ ] Image transform
+
+[.] Tools
+	[.] Pen
+		[.] Brush modes
+			[o] Draw
+			[o] Erase
+			[ ] Blur/sharpen/smear
+			[ ] Burn/dodge
+		[.] Brush types
+		[.] Brush sizes
+		[.] Brush colors
+	[ ] Selection
+		[ ] Rectangle
+		[ ] Circle
+		[ ] By color/contrast
+		[ ] User input
+	[ ] Text
+	[ ] Gradient
+	[ ] Pick color
+		[ ] From final image
+		[ ] From current layer
+[ ] Export/Import
+	[ ] Save/Load current image to/from a user specified location on the hard drive
+		[ ] Handle image formats
+	[ ] Save/Load current project to/from a user specified location on the hard drive
+	[ ] Import/Export project settings
+
+[ ] UI
+	[ ] Input
+		[ ] Mouse
+			[.] Menu Strip
+				[.] File import/export
+				[ ] Image edit tools
+				[ ] Tool settings
+				[ ] Layer options
+				[ ] Project settings
+			[.] Tool Icons
+				[o] Draw
+				[o] Eraser
+				[ ] Select rectangle/rircle/color/input
+				[ ] Blur/sharpen/smear
+				[ ] Burn/Dodge
+		[ ] Keyboard
+			[ ] Shortcuts
+			[ ] Data input
+		[ ] Mouse + Keyboard
+			[ ] Move image view
+	[.] Output
+		[o] Display Image
+			[ ] Image view scale
+		[ ] Layer Sizes
+		[ ] Cursor Image
+		[.] Current tool/color
