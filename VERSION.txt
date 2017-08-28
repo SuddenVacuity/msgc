@@ -6,7 +6,11 @@ remov	- A removed feature
 issue	- id of issue - A known issue that's been logged
 fixed	- id of issue - A known issue that's been fixed
 
-v0.0.0 - Initial Commit
+v0.0.0.1 - Update Image Merging
+fixed core - coreArtifact000 - Graphic artifacts from System.Graphics
+issue core - coreImage000    - Images must be the same size to be merged
+
+v0.0.0.0 - Initial Commit
 	added ui - basic user interface
 	added ui - create new image
 	added ui - save image to .exe directory

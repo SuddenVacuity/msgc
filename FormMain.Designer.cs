@@ -890,9 +890,9 @@ namespace msgc
             this.label5.AutoSize = true;
             this.label5.Location = new System.Drawing.Point(11, 216);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(67, 13);
+            this.label5.Size = new System.Drawing.Size(71, 13);
             this.label5.TabIndex = 5;
-            this.label5.Text = "Brush Mode:";
+            this.label5.Text = "Brush Shape:";
             // 
             // button_round_brush
             // 

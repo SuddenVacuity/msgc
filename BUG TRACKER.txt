@@ -19,19 +19,30 @@ Description of the issue
 
 
 ***************************************************************************************************
-	ID: coreArtifact000
-	VERSION: 0.0.0
-	STATUS: Pending
+	ID: coreImage000
+	VERSION: 0.0.0.1
+	STAUS: Pending
 	RISK: MEDIUM
-	Graphic artifacts from flattening draw buffer to layer
-		I: Visible artifacts are created when a layer is drawn to multiple times
-		S: Switch blending method from System.Drawing.Graphics to System.Marshal.Copy
+	Images must be the same size to merge
+		I: Copies of images must be made that are equal size.
+		I: Longer wait time for larger images or many layers being stacked.
+		I: Layers must all have the same sized image.
+		S: 
 ***************************************************************************************************
 	ID: coreDraw000
-	VERSION: 0.0.0
+	VERSION: 0.0.0.0
 	STAUS: Pending
 	RISK: MEDIUM
 	Draw tools do not create lines inbetween updates
 		I: Drawing with mouse input is uneven/disconnected
 		S: Calculate a line from current point to previous point and draw along it
+***************************************************************************************************
+***************************************************************************************************
+	ID: coreArtifact000
+	VERSION: 0.0.0.0 (0.0.0.1)
+	STATUS: Resolved
+	RISK: MEDIUM
+	Graphic artifacts from flattening draw buffer to layer
+		I: Visible artifacts are created when a layer is drawn to multiple times
+		S: Switch blending method from System.Drawing.Graphics to System.Marshal.Copy
 ***************************************************************************************************

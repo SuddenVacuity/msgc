@@ -1,10 +1,9 @@
 
 Current Goals
-[ ] Fix graphic artifacts
 [ ] draw lines to buffer
 [ ] section main file into smaller files
 [ ] handle core files that aren't embedded
-[ ] move duplicate code into methods
+[.] move duplicate code into methods
 
 -------------------------------------------------------------------
 TODO Checklist

@@ -36,11 +36,12 @@ namespace msgc
             public bool has(int flags) { return (m_flags & flags) == flags; }
         }
 
-        public enum BrushMode
+        public enum BlendMode
         {
             None,
             DrawAdd,
             DrawMix,
+            Replace,
             Erase,
         }
 
@@ -50,7 +51,7 @@ namespace msgc
             private BitField m_flags = new BitField();
             private int m_id = int.MinValue;
             private string m_name = "";
-            public CanvasFragment m_fragment;
+            private CanvasFragment m_fragment;
             private bool m_isVisible = true;
             //Vector
             //Filter
@@ -84,6 +85,8 @@ namespace msgc
                 m_fragment.resize(size.Width, size.Height, offset);
             }
 
+            public void setImage(Bitmap image) { m_fragment.setImage(image); }
+            public Bitmap getImage() { return m_fragment.getImage();  }
             public int getId() { return m_id; }
             public void setId(int id) { m_id = id; }
             public void setIsVisible(bool visible) { m_isVisible = visible; }
@@ -200,7 +203,7 @@ namespace msgc
         }
 
         // default values
-        private int m_defaultBrushMode = (int)BrushMode.DrawAdd;
+        private BlendMode m_defaultBlendMode = BlendMode.DrawAdd;
         private Color m_defaultBrushColor = Color.FromArgb(255, 255, 255, 255);
         private Color m_defaultColor = Color.Black;
         private Color m_defaultColorAlt = Color.White;
@@ -219,11 +222,11 @@ namespace msgc
         private Bitmap m_canvasImage;
         // the image that will be saved to file if saved
         private Bitmap m_finalImage;
-        // the position the mouse was last mousemove update
 
         ////////////////////
         // drawing tools
         ////////////////////
+        // the position the mouse was last mousemove update
         private Point m_mousePosPrev;
         private bool m_isDrawing;
         // where drawing input is stored bfore it's flattened to m_finalImage
@@ -234,7 +237,7 @@ namespace msgc
         private Color m_color;
         private Color m_colorAlt;
         private Bitmap m_brush;
-        private int m_brushMode;
+        private BlendMode m_brushMode;
 
 
 
@@ -278,7 +281,7 @@ namespace msgc
             m_color = m_defaultColor;
             m_colorAlt = m_defaultColorAlt;
 
-            m_brushMode = m_defaultBrushMode;
+            m_brushMode = m_defaultBlendMode;
             button_round_brush.BackColor = Color.Black;
 
             // load brush
@@ -623,11 +626,11 @@ namespace msgc
         /////////////////////////////////////
         private void button_pencil_Click(object sender, EventArgs e)
         {
-            m_brushMode = (int)BrushMode.DrawAdd;
+            m_brushMode = BlendMode.DrawAdd;
         }
         private void button_eraser_Click(object sender, EventArgs e)
         {
-            m_brushMode = (int)BrushMode.Erase;
+            m_brushMode = BlendMode.Erase;
         }
 
         /////////////////////////////////////
@@ -708,8 +711,10 @@ namespace msgc
         // color selection
         /////////////////////////////////////
 
-        private void updateColorInputTextBoxes()
+        private void updateColorInputTextBoxes(Color color)
         {
+            m_color = color;
+            color_box.BackColor = m_color;
             text_input_color_alpha.Text = Convert.ToString(m_color.A);
             text_input_color_red.Text = Convert.ToString(m_color.R);
             text_input_color_green.Text = Convert.ToString(m_color.G);
@@ -717,93 +722,63 @@ namespace msgc
         }
         private void color_black_Click(object sender, EventArgs e)
         {
-            m_color = color_black.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_black.BackColor);
         }
         private void color_gray_Click(object sender, EventArgs e)
         {
-            m_color = color_gray.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_gray.BackColor);
         }
         private void color_white_Click(object sender, EventArgs e)
         {
-            m_color = color_white.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_white.BackColor);
         }
         private void color_1_Click(object sender, EventArgs e)
         {
-            m_color = color_1.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_1.BackColor);
         }
         private void color_2_Click(object sender, EventArgs e)
         {
-            m_color = color_2.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_2.BackColor);
         }
         private void color_3_Click(object sender, EventArgs e)
         {
-            m_color = color_3.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_3.BackColor);
         }
         private void color_4_Click(object sender, EventArgs e)
         {
-            m_color = color_4.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_4.BackColor);
         }
         private void color_5_Click(object sender, EventArgs e)
         {
-            m_color = color_5.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_5.BackColor);
         }
         private void color_6_Click(object sender, EventArgs e)
         {
-            m_color = color_6.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_6.BackColor);
         }
         private void color_7_Click(object sender, EventArgs e)
         {
-            m_color = color_7.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_7.BackColor);
         }
         private void color_8_Click(object sender, EventArgs e)
         {
-            m_color = color_8.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_8.BackColor);
         }
         private void color_9_Click(object sender, EventArgs e)
         {
-            m_color = color_9.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_9.BackColor);
         }
         private void color_10_Click(object sender, EventArgs e)
         {
-            m_color = color_10.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_10.BackColor);
         }
         private void color_11_Click(object sender, EventArgs e)
         {
-            m_color = color_11.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_11.BackColor);
         }
         private void color_12_Click(object sender, EventArgs e)
         {
-            m_color = color_12.BackColor;
-            color_box.BackColor = m_color;
-            updateColorInputTextBoxes();
+            updateColorInputTextBoxes(color_12.BackColor);
         }
 
         /////////////////////////////////////
@@ -833,8 +808,7 @@ namespace msgc
             m_redrawDrawBufferZone.Height = m_brush.Size.Height * 2;
             
             drawToBuffer(m_mousePosPrev);
-
-            //flattenImage(m_canvasImage, m_redrawDrawufferZone);
+            
             Bitmap final = new Bitmap(display_canvas.Image.Width, display_canvas.Image.Height, PixelFormat.Format32bppArgb);
             
             using (Graphics gr = Graphics.FromImage(final))
@@ -925,14 +899,14 @@ namespace msgc
         private void display_canvas_MouseUp(object sender, MouseEventArgs e)
         {
             m_isDrawing = false;
-            flattenImage(m_redrawDrawBufferZone);
+            flattenImage();
 
             if (m_canvasImage != null)
                 m_canvasImage.Dispose();
             if (display_canvas.Image != null)
                 display_canvas.Image.Dispose();
 
-            m_canvasImage = new Bitmap(m_finalImage);
+            m_canvasImage = (Bitmap)m_finalImage.Clone();
             display_canvas.Image = (Bitmap)m_canvasImage.Clone();
 
             drawUI();
@@ -949,15 +923,12 @@ namespace msgc
         
         /// <summary>
         /// Combines every layer and drawBuffer into a single image.
-        /// (region) is the area within layers and buffer, relative to display_canvas, to redraw
         /// </summary>
-        /// <param name="region"></param>
-        private void flattenImage(Rectangle region)
+        private void flattenImage()
         {
             if (m_finalImage != null)
                 m_finalImage.Dispose();
-
-            m_finalImage = new Bitmap(display_canvas.Image.Width, display_canvas.Image.Height, PixelFormat.Format32bppArgb);
+            m_finalImage = new Bitmap(display_canvas.Width, display_canvas.Height, PixelFormat.Format32bppArgb);
 
             // move pixels from drawBuffer to display_canvas
             // flatten all layers
@@ -967,149 +938,37 @@ namespace msgc
                 if (m_layers[l].getId() == int.MinValue || m_layers[l].getIsVisible() == false)
                     continue;
                 
-                Rectangle layerRegion = m_layers[l].getRectangle();
-                CanvasFragment fragment = m_layers[l].m_fragment;
-
-                Bitmap layer = new Bitmap(layerRegion.Width, layerRegion.Height, PixelFormat.Format32bppArgb);
+                Bitmap layer = m_layers[l].getImage();
                 
-                using (Graphics gr = Graphics.FromImage(layer))
+                // apply drawbuffer if l is current layer
+                if (l == m_layerCurrent)
                 {
-                    gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
-                    gr.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
-
-                    //// blend buffer with image color
-                    //float alphaCoef = addPixel.A / (float)byte.maxValue;
-                    //a = (int)(oldPixel.A + ((byte.MaxValue - oldPixel.A) * apAlphaCoef));
-                    //r = (int)((addPixel.R * apAlphaCoef) + (oldPixel.R * (1.0f - apAlphaCoef)));
-                    //g = (int)((addPixel.G * apAlphaCoef) + (oldPixel.G * (1.0f - apAlphaCoef)));
-                    //b = (int)((addPixel.B * apAlphaCoef) + (oldPixel.B * (1.0f - apAlphaCoef)));
-
-                    Bitmap img = fragment.getImage();
-
-                    // apply drawbuffer if l is current layer
-                    if (l == m_layerCurrent)
-                    {
-                        Console.Write("\nDrawing on layer " + l);
-                        if (m_brushMode == (int)BrushMode.Erase)
-                        {
-                            Bitmap mask = new Bitmap(img.Width, img.Height, PixelFormat.Format32bppArgb);
-                            
-                            // cut mask section out of drawBuffer
-                            using (Graphics m = Graphics.FromImage(mask))
-                            {
-                                m.DrawImage(m_drawBuffer,
-                                    new Rectangle(0, 0, mask.Width, mask.Height));
-                            }
-                            Bitmap bmp = (Bitmap)img.Clone();
-                            PixelFormat pxf = PixelFormat.Format32bppArgb;
-                            Rectangle rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
-                            BitmapData bmpData = bmp.LockBits(rect, ImageLockMode.ReadWrite, pxf);
-
-                            Bitmap maskBmp = (Bitmap)mask.Clone();
-                            PixelFormat maskPxf = PixelFormat.Format32bppArgb;
-                            Rectangle maskRect = new Rectangle(0, 0, mask.Width, mask.Height);
-                            BitmapData maskBmpData = mask.LockBits(maskRect, ImageLockMode.ReadWrite, maskPxf);
-
-                            IntPtr ptr = bmpData.Scan0;
-                            IntPtr maskPtr = maskBmpData.Scan0;
-
-                            int numBytes = bmp.Width * bmp.Height * 4;
-                            byte[] argbValues = new byte[numBytes];
-
-                            int maskNumBytes = mask.Width * mask.Height * 4;
-                            byte[] maskArgbValues = new byte[maskNumBytes];
-
-                            System.Runtime.InteropServices.Marshal.Copy(ptr, argbValues, 0, numBytes);
-                            System.Runtime.InteropServices.Marshal.Copy(maskPtr, maskArgbValues, 0, maskNumBytes);
-
-                            for (int i = 0; i < argbValues.Length; i += 4)
-                            {
-                                // argbValues is in format BGRA (Blue, Green, Red, Alpha)
-
-                                int maskOpacity = maskArgbValues[i + 3];
-                                int bmpOpacity = argbValues[i + 3];
-
-                                // skip if mask has 0% opacity
-                                if (maskOpacity == 0)
-                                    continue;
-                                if (maskOpacity >= bmpOpacity)
-                                    argbValues[i + 3] = 0;
-                                else
-                                    argbValues[i + 3] = (byte)(bmpOpacity - maskOpacity);
-
-                                // If 0% transparent change colors to white
-                                if (argbValues[i + 3] > 0)
-                                    continue;
-                                
-                                // turn 0% opacity pixels white
-                                argbValues[i    ] = 255;
-                                argbValues[i + 1] = 255;
-                                argbValues[i + 2] = 255;
-                            }
-
-                            System.Runtime.InteropServices.Marshal.Copy(argbValues, 0, ptr, numBytes);
-                            
-                            bmp.UnlockBits(bmpData);
-
-                            gr.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
-                            gr.DrawImage(
-                                bmp,
-                                layerRegion,
-                                new Rectangle(0, 0, bmp.Width, bmp.Height),
-                                GraphicsUnit.Pixel);
-                            
-                            bmp.Dispose();
-                            mask.Dispose();
-                        }
-                        else
-                        {
-                            gr.DrawImage(
-                                img,
-                                new Rectangle(0, 0, layer.Width, layer.Height),
-                                new Rectangle(0, 0, layer.Width, layer.Height),
-                                GraphicsUnit.Pixel);
-                            
-                            gr.DrawImage(
-                                    m_drawBuffer,
-                                    new Rectangle(0, 0, m_drawBuffer.Width, m_drawBuffer.Height),
-                                    new Rectangle(0, 0, m_drawBuffer.Width, m_drawBuffer.Height),
-                                    GraphicsUnit.Pixel);
-
-                            // check if resized is needed
-                            Point topLeft = new Point(
-                                region.X,
-                                region.Y);
-                            Point bottomRight = new Point(
-                                topLeft.X + region.Width,
-                                topLeft.Y + region.Height);
-                            //if (layerRegion.Contains(topLeft) && layerRegion.Contains(bottomRight)) { }
-                            //    m_layers[l].resizeImage(m_redrawDrawufferZone.Location, m_redrawDrawufferZone.Size);
-                        }
-                    } // END (l == m_layerCurrent)
-                    else
-                        gr.DrawImage(
-                            img,
-                            new Rectangle(0, 0, layer.Width, layer.Height),
-                            new Rectangle(0, 0, layer.Width, layer.Height),
-                            GraphicsUnit.Pixel);
-
-                    gr.Save();
-                    img.Dispose();
-                } // END using(Graphics)
-                
-                // set ew image to layer
-                fragment.setImage(layer);
-
-                // add layer to final image
-                using (Graphics gr = Graphics.FromImage(m_finalImage))
-                {
-                    gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
-                    gr.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+                    Console.Write("\nDrawing on layer " + l);
                     
-                    gr.DrawImageUnscaled(layer, layerRegion.Location);
-                    gr.Save();
-                }
-                layer.Dispose();
+                    Bitmap buffer = new Bitmap(layer.Width, layer.Height, PixelFormat.Format32bppArgb);
+
+                    // cut mask section out of drawBuffer
+                    using (Graphics m = Graphics.FromImage(buffer))
+                    {
+                        m.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        m.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+                        m.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                        m.DrawImage(m_drawBuffer,
+                            new Rectangle(0, 0, buffer.Width, buffer.Height));
+                    }
+
+                    // add draw buffer to current layer
+                    Bitmap bmp = mergeImages(layer, buffer);
+
+                    m_layers[l].setImage(bmp);
+                    buffer.Dispose();
+
+                    // get a handle on the image again
+                    layer = m_layers[l].getImage();
+                } // END (l == m_layerCurrent)
+
+                Bitmap final = mergeImages(m_finalImage, layer, BlendMode.DrawAdd);
+                m_finalImage = final;
             } // END l
         }
 
@@ -1161,7 +1020,7 @@ namespace msgc
         /// Draws to m_drawBuffer size of brush centered on (mousePosition)
         /// Expands m_redrawDrawBufferZone as needed
         /// </summary>
-        /// <param name="mousePosition"></param>
+        /// <param name="mousePosition">The current position of the mouse within draw_canvas</param>
         private void drawToBuffer(Point mousePosition)
         {
             int brushHalfWidth = m_brush.Width / 2;
@@ -1207,7 +1066,7 @@ namespace msgc
                     
                     switch (m_brushMode)
                     {
-                        case (int)BrushMode.DrawAdd:
+                        case BlendMode.DrawAdd:
                             {
                                 if (bp.A == 0)
                                     break;
@@ -1220,7 +1079,7 @@ namespace msgc
                                 b = dbB;
                                 break;
                             }
-                        case (int)BrushMode.DrawMix:
+                        case BlendMode.DrawMix:
                             { // mix
                                 if (bp.A == 0)
                                     break;
@@ -1234,7 +1093,7 @@ namespace msgc
                                 b = (int)(ip.B * ipAlphaWeight + dbB * bpAlphaWeight);
                                 break;
                             }
-                        case (int)BrushMode.Erase:
+                        case BlendMode.Erase:
                             {
                                 if(dbA > a)
                                     a = dbA;
@@ -1258,7 +1117,7 @@ namespace msgc
         /// If (mousePos) is at the edge of m_redrawDrawBufferZone:
         ///    resize m_redrawDrawBufferZone based on direction and brush size.
         /// </summary>
-        /// <param name="mousePos"></param>
+        /// <param name="mousePos">The current position of the mouse within draw_canvas</param>
         /// <returns></returns>
         private bool expandUpdateArea(Point mousePos)
         {
@@ -1340,24 +1199,160 @@ namespace msgc
             if (m_layerCount <= 0)
                 return;
 
+            // shift following layers to the left
             int end = m_layerCount - 1;
             for (int i = position; i < end; i++)
             {
                 m_layers[i] = m_layers[i + 1];
                 m_layers[i].setId(i);
             }
+
+            // clear last layer
             m_layers[m_layerCount].clearLayer();
             m_layerCount--;
         }
 
-        private void TEST()
+        /// <summary>
+        /// Merges two images together based on brush mode. (source) and (overlay) must be the same length.
+        /// </summary>
+        /// <param name="source">The image used as a base.</param>
+        /// <param name="overlay">The image applied to the base</param>
+        /// <param name="mode">The method used to blend images together</param>
+        /// <returns></returns>
+        private Bitmap mergeImages(Bitmap source, Bitmap overlay, BlendMode mode = BlendMode.None)
         {
-            Color d = ((Bitmap)display_canvas.Image).GetPixel(1, 1);
-            Color c = m_canvasImage.GetPixel(1, 1);
-            Color f = m_finalImage.GetPixel(1, 1);
-            Color l = m_layers[0].getPixel(1, 1);
-            c = c;
+            BlendMode bm = m_brushMode;
+            if (mode != BlendMode.None)
+                bm = mode;
+
+            // size in bytes of pixels
+            int pixelSize = 4;
+            
+            // prepare source data for modification
+            Bitmap sourceBmp = (Bitmap)source.Clone();
+            PixelFormat sourcePxf = PixelFormat.Format32bppArgb;
+            Rectangle sourceRect = new Rectangle(0, 0, sourceBmp.Width, sourceBmp.Height);
+            BitmapData sourceBmpData = sourceBmp.LockBits(sourceRect, ImageLockMode.ReadWrite, sourcePxf);
+
+            // prepare overlay data for modification
+            Bitmap overlayBmp = (Bitmap)overlay.Clone();
+            PixelFormat overlayPxf = PixelFormat.Format32bppArgb;
+            Rectangle overlayRect = new Rectangle(0, 0, overlayBmp.Width, overlayBmp.Height);
+            BitmapData overlayBmpData = overlayBmp.LockBits(overlayRect, ImageLockMode.ReadWrite, overlayPxf);
+            
+            IntPtr sourcePtr = sourceBmpData.Scan0;
+            IntPtr overlayPtr = overlayBmpData.Scan0;
+
+            int sourceNumBytes = sourceBmp.Width * sourceBmp.Height * pixelSize;
+            byte[] sourceArgbValues = new byte[sourceNumBytes];
+
+            int overlayNumBytes = overlayBmp.Width * overlayBmp.Height * pixelSize;
+            byte[] overlayArgbValues = new byte[overlayNumBytes];
+
+            System.Diagnostics.Debug.Assert(sourceArgbValues.Length == overlayArgbValues.Length, "\nMerged images are not the same size.");
+
+            System.Runtime.InteropServices.Marshal.Copy(sourcePtr, sourceArgbValues, 0, sourceNumBytes);
+            System.Runtime.InteropServices.Marshal.Copy(overlayPtr, overlayArgbValues, 0, overlayNumBytes);
+            
+            for (int i = 0; i < sourceArgbValues.Length; i += pixelSize)
+            {
+                mergePixels(ref sourceArgbValues, ref overlayArgbValues, i, bm);
+            }
+
+            System.Runtime.InteropServices.Marshal.Copy(sourceArgbValues, 0, sourcePtr, sourceNumBytes);
+            sourceBmp.UnlockBits(sourceBmpData);
+            overlayBmp.UnlockBits(overlayBmpData);
+
+            return sourceBmp;
         }
+
+        /// <summary>
+        /// Blends pixels together based on Brush Mode.
+        /// </summary>
+        /// <param name="source">The pixel array to be used as a base.</param>
+        /// <param name="overlay">The pixel array to be applied to the base.</param>
+        /// <param name ="offset">The position of the target pixel within the array</param>
+        /// <returns></returns>
+        private void mergePixels(ref byte[] source, ref byte[] overlay, int offset, BlendMode mode)
+        {
+            // argbValues are in format BGRA (Blue, Green, Red, Alpha)
+            int b = offset;
+            int g = offset + 1;
+            int r = offset + 2;
+            int a = offset + 3;
+            switch (mode)
+            {
+                case BlendMode.DrawAdd:
+                    {
+                        // skip if overlay has 0% opacity
+                        if (overlay[a] == 0)
+                            break;
+                        
+                        float overAcoef = overlay[a] / (float)byte.MaxValue;
+                        float sourAcoef = source[a] / (float)byte.MaxValue;
+                        
+                        float A = 1.0f - (1.0f - overAcoef) * (1.0f - sourAcoef);
+                        source[a] = (byte)(byte.MaxValue * A);
+                        
+                        if (A < 1.0e-6)
+                            break;
+                        
+                        source[r] = (byte)(overlay[r] * overAcoef / A + source[r] * sourAcoef * (1.0f - overAcoef) / A);
+                        source[g] = (byte)(overlay[g] * overAcoef / A + source[g] * sourAcoef * (1.0f - overAcoef) / A);
+                        source[b] = (byte)(overlay[b] * overAcoef / A + source[b] * sourAcoef * (1.0f - overAcoef) / A);
+                        
+                        break;
+                    } // END case BlendMode.DrawAdd
+                case BlendMode.DrawMix:
+                    {
+                        // skip if overlay has 0% opacity
+                        if (overlay[a] == 0)
+                            break;
+                        
+                        float overAcoef = overlay[a] / (float)byte.MaxValue;
+                        float sourAweight = source[a] / (float)(source[a] + overlay[a]);
+                        float overAweight = 1.0f - sourAweight;
+                        
+                        source[a] = (byte)((overlay[a] * overAweight + source[a] * sourAweight));
+                        source[r] = (byte)((overlay[r] * overAweight + source[r] * sourAweight));
+                        source[g] = (byte)((overlay[g] * overAweight + source[g] * sourAweight));
+                        source[b] = (byte)((overlay[b] * overAweight + source[b] * sourAweight));
+
+                        break;
+                    } // END case BlendMode.DrawMix
+                case BlendMode.Replace:
+                    {
+                        source[a] = overlay[a];
+                        source[r] = overlay[r];
+                        source[g] = overlay[g];
+                        source[b] = overlay[b];
+                        break;
+                    }
+                case BlendMode.Erase:
+                    {
+                        // skip if overlay has 0% opacity
+                        if (overlay[a] == 0)
+                            break;
+                        if (overlay[a] >= source[a])
+                            source[a] = 0;
+                        else
+                            source[a] = (byte)(source[a] - overlay[a]);
+
+                        // If 0% transparent change colors to white
+                        if (source[a] > 0)
+                            break;
+
+                        // turn 0% opacity pixels white
+                        source[r] = byte.MaxValue;
+                        source[g] = byte.MaxValue;
+                        source[b] = byte.MaxValue;
+                        break;
+                    } // END case BlendMode.Erase
+                case BlendMode.None: break;
+                default: Console.Write("\nUnknown Blend Mode"); break;
+            } // END switch(br)
+        }
+
         private void doesNothing() { /*   ONLY USED SO THAT GENERATED CODE APPEARS BELOW HERE    */}
 
         private void button_square_brush_Click(object sender, EventArgs e)
@@ -1454,7 +1449,7 @@ namespace msgc
             else
                 layer_1_visible.BackColor = Color.Transparent;
 
-            flattenImage(new Rectangle(0, 0, display_canvas.Image.Width, display_canvas.Image.Height));
+            flattenImage();
             if (m_canvasImage != null)
                 m_canvasImage.Dispose();
             if (display_canvas.Image != null)
@@ -1475,7 +1470,7 @@ namespace msgc
             else
                 layer_2_visible.BackColor = Color.Transparent;
 
-            flattenImage(new Rectangle(0, 0, display_canvas.Image.Width, display_canvas.Image.Height));
+            flattenImage();
             if (m_canvasImage != null)
                 m_canvasImage.Dispose();
             if (display_canvas.Image != null)
@@ -1496,7 +1491,7 @@ namespace msgc
             else
                 layer_3_visible.BackColor = Color.Transparent;
 
-            flattenImage(new Rectangle(0, 0, display_canvas.Image.Width, display_canvas.Image.Height));
+            flattenImage();
             if (m_canvasImage != null)
                 m_canvasImage.Dispose();
             if (display_canvas.Image != null)
