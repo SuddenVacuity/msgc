@@ -6,9 +6,16 @@ remov	- A removed feature
 issue	- id of issue - A known issue that's been logged
 fixed	- id of issue - A known issue that's been fixed
 
+v0.0.0.2 - Update Image Merging - Image Size
+	added ui - feedback on the size of the current layer
+	added core - support for layers with differently sized images
+	added core - unit tests for overlaying images
+	fixed core - coreImage000    - Images must be the same size to be merged
+	issue core - coreImage001    - Redraw regions are larger than they need to be
+
 v0.0.0.1 - Update Image Merging
-fixed core - coreArtifact000 - Graphic artifacts from System.Graphics
-issue core - coreImage000    - Images must be the same size to be merged
+	fixed core - coreArtifact000 - Graphic artifacts from System.Graphics
+	issue core - coreImage000    - Images must be the same size to be merged
 
 v0.0.0.0 - Initial Commit
 	added ui - basic user interface

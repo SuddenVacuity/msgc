@@ -12,10 +12,10 @@ using System.Runtime.InteropServices;
 
 namespace msgc
 {
-    
-
     public partial class FormMain : Form
     {
+        System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
+
         public class BitField
         {
             private int m_flags;
@@ -39,6 +39,7 @@ namespace msgc
         public enum BlendMode
         {
             None,
+            Over,
             DrawAdd,
             DrawMix,
             Replace,
@@ -95,6 +96,8 @@ namespace msgc
             public Color getPixel(Point point)  { return m_fragment.getPixel(point.X, point.Y); }
             public void setPixel(int x, int y, Color color) { m_fragment.setPixel(x, y, color); }
             public void setPixel(Point point, Color color)  { m_fragment.setPixel(point.X, point.Y, color); }
+            public Point getImagePosition() { return m_fragment.getPosition(); }
+            public Size getImageSize() { return m_fragment.getSize(); }
             public Rectangle getRectangle() { return new Rectangle(m_fragment.getPosition(), m_fragment.getSize()); }
 
             public void addFlag(int flag) { m_flags.add(flag); }
@@ -340,21 +343,34 @@ namespace msgc
             m_isDrawing = false;
             m_redrawDrawBufferZone = new Rectangle(0, 0, 0, 0);
 
-            // make canves the correct size and create image
-            display_canvas.Size = m_canvasImage.Size;
+            // create draw buffer
             m_drawBuffer = new Bitmap(display_canvas.Image.Size.Width, display_canvas.Image.Size.Height, PixelFormat.Format32bppArgb);
 
             // load layers
             m_layers[m_layerCount] = new Layer(m_layerCount, "Background", new CanvasFragment((Bitmap)display_canvas.Image.Clone(), 0, 0));
             m_layerCurrent = m_layers[m_layerCount].getId();
             m_layerCount++;
-            m_layers[m_layerCount] = new Layer(m_layerCount, "Layer 2", new CanvasFragment(new Bitmap(display_canvas.Image.Width, display_canvas.Image.Height, PixelFormat.Format32bppArgb), 0, 0));
+            Bitmap lbmp = new Bitmap(400, 200, PixelFormat.Format32bppArgb); for (int y = 0; y < lbmp.Height; y++) for (int x = 0; x < lbmp.Width; x++) lbmp.SetPixel(x, y, Color.Red);
+            m_layers[m_layerCount] = new Layer(m_layerCount, "Layer 2", new CanvasFragment(lbmp, 175, 100));
             m_layerCurrent = m_layers[m_layerCount].getId();
             m_layerCount++;
             m_layers[m_layerCount] = new Layer(m_layerCount, "Layer 3", new CanvasFragment(new Bitmap(display_canvas.Image.Width, display_canvas.Image.Height, PixelFormat.Format32bppArgb), 0, 0));
             m_layerCurrent = m_layers[m_layerCount].getId();
             m_layerCount++;
 
+            display_canvas.Size = m_canvasImage.Size;
+
+            flattenImage(new Rectangle(display_canvas.Location, display_canvas.Size));
+
+            if (m_canvasImage != null)
+                m_canvasImage.Dispose();
+            if (display_canvas.Image != null)
+                display_canvas.Image.Dispose();
+
+            m_canvasImage = (Bitmap)m_finalImage.Clone();
+            // make canves the correct size and create image
+            display_canvas.Image = (Bitmap)m_canvasImage.Clone();
+            
             // set up color boxes
             layer_1.BackColor = Color.Transparent;
             layer_2.BackColor = Color.Transparent;
@@ -387,7 +403,10 @@ namespace msgc
             color_10.BackColor = Color.FromArgb(255, 127, 0, 255);
             color_11.BackColor = Color.FromArgb(255, 255, 0, 255);
             color_12.BackColor = Color.FromArgb(255, 255, 0, 127);
-            
+
+            runUnitTests();
+            drawUI();
+            display_canvas.Refresh();
         }
         
         private void FormMain_Load(object sender, EventArgs e)
@@ -481,7 +500,8 @@ namespace msgc
             m_layers[m_layerCount] = new Layer(m_layerCount, "BackGround", new CanvasFragment(new Bitmap(newImage), 0, 0));
             m_layerCurrent = m_layers[m_layerCount].getId();
             m_layerCount++;
-            m_layers[m_layerCount] = new Layer(m_layerCount, "Layer 2", new CanvasFragment(new Bitmap(newImage.Width, newImage.Height, PixelFormat.Format32bppArgb), 0, 0));
+            Bitmap lbmp = new Bitmap(400, 200, PixelFormat.Format32bppArgb); for (int y = 0; y < lbmp.Height; y++) for (int x = 0; x < lbmp.Width; x++) lbmp.SetPixel(x, y, Color.Red);
+            m_layers[m_layerCount] = new Layer(m_layerCount, "Layer 2", new CanvasFragment(lbmp, 175, 100));
             m_layerCurrent = m_layers[m_layerCount].getId();
             m_layerCount++;
             m_layers[m_layerCount] = new Layer(m_layerCount, "Layer 3", new CanvasFragment(new Bitmap(newImage.Width, newImage.Height, PixelFormat.Format32bppArgb), 0, 0));
@@ -899,7 +919,7 @@ namespace msgc
         private void display_canvas_MouseUp(object sender, MouseEventArgs e)
         {
             m_isDrawing = false;
-            flattenImage();
+            flattenImage(m_redrawDrawBufferZone);
 
             if (m_canvasImage != null)
                 m_canvasImage.Dispose();
@@ -922,9 +942,10 @@ namespace msgc
         /////////////////////////////////////////////////////////////////////
         
         /// <summary>
-        /// Combines every layer and drawBuffer into a single image.
+        /// Creates a single image form every image from every visible layer.
         /// </summary>
-        private void flattenImage()
+        /// <param name="region"></param>
+        private void flattenImage(Rectangle region)
         {
             if (m_finalImage != null)
                 m_finalImage.Dispose();
@@ -932,44 +953,59 @@ namespace msgc
 
             // move pixels from drawBuffer to display_canvas
             // flatten all layers
+
+            watch.Restart();
             for (int l = 0; l < m_layerCount; l++)
             {
-                Console.Write("\nLayer " + l + " isVisible = " + m_layers[l].getIsVisible());
-                if (m_layers[l].getId() == int.MinValue || m_layers[l].getIsVisible() == false)
+                // get a handle on the layer
+                Layer layer = m_layers[l];
+                // Console.Write("\nLayer " + l + " isVisible = " + layer.getIsVisible());
+
+                // skip layer if is not visible or has not been set
+                if (layer.getId() == int.MinValue || layer.getIsVisible() == false)
                     continue;
-                
-                Bitmap layer = m_layers[l].getImage();
-                
+
+                // get a handle on the layers image
+                Bitmap layerImage = layer.getImage();
+
+                // create region relative to the image to update
+                Rectangle rec = layer.getRectangle();
+                Point imagePos = rec.Location;
+
                 // apply drawbuffer if l is current layer
                 if (l == m_layerCurrent)
                 {
                     Console.Write("\nDrawing on layer " + l);
                     
-                    Bitmap buffer = new Bitmap(layer.Width, layer.Height, PixelFormat.Format32bppArgb);
+                    Bitmap buffer = new Bitmap(layerImage.Width, layerImage.Height, PixelFormat.Format32bppArgb);
 
-                    // cut mask section out of drawBuffer
+                    // cut section out of draw buffer that is the same size and position as the layer image
                     using (Graphics m = Graphics.FromImage(buffer))
                     {
                         m.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
                         m.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
                         m.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
                         m.DrawImage(m_drawBuffer,
-                            new Rectangle(0, 0, buffer.Width, buffer.Height));
+                            new Rectangle(0, 0, rec.Width, rec.Height),
+                            new Rectangle(imagePos.X, imagePos.Y, buffer.Width, buffer.Height),
+                            GraphicsUnit.Pixel);
                     }
 
                     // add draw buffer to current layer
-                    Bitmap bmp = mergeImages(layer, buffer);
+                    Bitmap bmp = mergeImages( layerImage, buffer, new Rectangle(0, 0, rec.Width, rec.Height));
 
-                    m_layers[l].setImage(bmp);
+                    layer.setImage(bmp);
                     buffer.Dispose();
 
                     // get a handle on the image again
-                    layer = m_layers[l].getImage();
+                    layerImage = layer.getImage();
                 } // END (l == m_layerCurrent)
 
-                Bitmap final = mergeImages(m_finalImage, layer, BlendMode.DrawAdd);
+                Point layerImagePosition = layer.getImagePosition();
+                Bitmap final = mergeImages(m_finalImage, layerImage, rec, BlendMode.DrawAdd);
                 m_finalImage = final;
             } // END l
+            Console.Write("\nFLATTEN ALL LAYERS TIME: " + watch.ElapsedMilliseconds);
         }
 
         /// <summary>
@@ -988,6 +1024,7 @@ namespace msgc
                 // skip pixels that are out of bounds
                 if (x < 0 || x >= display_canvas.Width)
                     continue;
+
                 if (bottom >= display_canvas.Height || bottom < 0) { }
                 else
                     ((Bitmap)display_canvas.Image).SetPixel(x, bottom, Color.Black);
@@ -1014,6 +1051,52 @@ namespace msgc
                 
             }
             // END outline drawbuffer redraw zone
+            // outline current layer
+            Rectangle rec = m_layers[m_layerCurrent].getRectangle();
+            for (int i = 0; i < rec.Width; i++)
+            {
+                int x = rec.X + i;
+                int bottom = rec.Y + rec.Height - 1;
+                int top = rec.Y;
+
+                // skip pixels that are out of bounds
+                if (x < 0 || x > display_canvas.Width)
+                    continue;
+
+                // dotted line
+                int div = x / 7;
+                if (div % 2 == 0)
+                    continue;
+
+                if (bottom >= display_canvas.Height || bottom < 0) { }
+                else
+                    ((Bitmap)display_canvas.Image).SetPixel(x, bottom, Color.Cyan);
+                if (top < 0 || top >= display_canvas.Height) { }
+                else
+                    ((Bitmap)display_canvas.Image).SetPixel(x, top, Color.Cyan);
+            }
+            for (int i = 0; i < rec.Height; i++)
+            {
+                int y = rec.Y + i;
+                int right = rec.X + rec.Width - 1;
+                int left = rec.X;
+                // skip pixels that are out of bounds
+                if (y < 0 || y > display_canvas.Height)
+                    continue;
+
+                // dotted line
+                int div = y / 7;
+                if (div % 2 == 0)
+                    continue;
+
+                if (right >= display_canvas.Width || right < 0) { }
+                else
+                    ((Bitmap)display_canvas.Image).SetPixel(right, y, Color.Cyan);
+                if (left < 0 || left >= display_canvas.Width) { }
+                else
+                    ((Bitmap)display_canvas.Image).SetPixel(left, y, Color.Cyan);
+            } 
+            // END outline current layer
         }
 
         /// <summary>
@@ -1176,18 +1259,11 @@ namespace msgc
         /// </summary>
         private void clearDrawBuffer()
         {
-            Point start = new Point(m_redrawDrawBufferZone.X, m_redrawDrawBufferZone.Y);
-            Point end = new Point(start.X + m_redrawDrawBufferZone.Width, start.Y + m_redrawDrawBufferZone.Height);
-            for (int i = start.Y; i < end.Y; i++)
-                for (int j = start.X; j < end.X; j++)
-                {
-                    // bounds check
-                    if (i < 0 || j < 0)
-                        continue;
-                    if (i >= display_canvas.Height || j >= display_canvas.Width)
-                        continue;
-                    m_drawBuffer.SetPixel(j, i, Color.FromArgb(0, 0, 0, 0));
-                }
+            using (Graphics gr = Graphics.FromImage(m_drawBuffer))
+            {
+                gr.Clear(Color.Transparent);
+            }
+
             m_redrawDrawBufferZone.X =
                 m_redrawDrawBufferZone.Y =
                 m_redrawDrawBufferZone.Width =
@@ -1213,21 +1289,26 @@ namespace msgc
         }
 
         /// <summary>
-        /// Merges two images together based on brush mode. (source) and (overlay) must be the same length.
+        /// Merges two images together based on blend mode.
         /// </summary>
         /// <param name="source">The image used as a base.</param>
-        /// <param name="overlay">The image applied to the base</param>
+        /// <param name="overlay">The image applied to the base.</param>
+        /// <param name="updateRegion">Position and size of the area to overlay</param>
         /// <param name="mode">The method used to blend images together</param>
         /// <returns></returns>
-        private Bitmap mergeImages(Bitmap source, Bitmap overlay, BlendMode mode = BlendMode.None)
+        private Bitmap mergeImages(Bitmap source, Bitmap overlay, Rectangle updateRegion, BlendMode mode = BlendMode.None)
         {
             BlendMode bm = m_brushMode;
             if (mode != BlendMode.None)
                 bm = mode;
 
-            // size in bytes of pixels
-            int pixelSize = 4;
+            ////////////////////////////
+            // Prepare Image Data
+            ////////////////////////////
             
+            // size of pixels in bytes
+            int pixelSize = 4;
+
             // prepare source data for modification
             Bitmap sourceBmp = (Bitmap)source.Clone();
             PixelFormat sourcePxf = PixelFormat.Format32bppArgb;
@@ -1249,14 +1330,88 @@ namespace msgc
             int overlayNumBytes = overlayBmp.Width * overlayBmp.Height * pixelSize;
             byte[] overlayArgbValues = new byte[overlayNumBytes];
 
-            System.Diagnostics.Debug.Assert(sourceArgbValues.Length == overlayArgbValues.Length, "\nMerged images are not the same size.");
+            ////////////////////////////
+            // Read/Write Points
+            ////////////////////////////
+
+            int sourceStride = source.Width * pixelSize;
+            int overlayStride = overlay.Width * pixelSize;
+
+            // the first and last line in source image to write to
+            int byteStartLine = updateRegion.Y * sourceStride;
+            int byteEndLine = (overlay.Size.Height * sourceStride) + byteStartLine;
+
+            // position in each line to start and stop
+            int lineWriteStart = updateRegion.X * pixelSize;
+            int lineWriteEnd = (overlay.Width * pixelSize) + lineWriteStart;
+            
+            // get start/end lines
+            // check image bounds
+            if (byteStartLine < 0)
+                byteStartLine = 0;
+            if (byteEndLine > sourceArgbValues.Length)
+                byteEndLine = sourceArgbValues.Length;
+            // check specified region bounds
+            if (byteStartLine < updateRegion.Y * sourceStride)
+                byteStartLine = updateRegion.Y * sourceStride;
+            if (byteEndLine > (updateRegion.Y + overlayBmp.Height) * sourceStride)
+                byteEndLine = (updateRegion.Y + overlayBmp.Height) * sourceStride;
+            
+            // get start/stop position within each line
+            // check image bounds
+            if (lineWriteStart < 0)
+                lineWriteStart = 0;
+            if (lineWriteEnd > source.Width * pixelSize)
+                lineWriteEnd = source.Width * pixelSize;
+            // check specified region bounds
+            if (lineWriteStart < updateRegion.X * pixelSize)
+                lineWriteStart = updateRegion.X * pixelSize;
+            if (lineWriteEnd > (updateRegion.X + overlayBmp.Width) * pixelSize)
+                lineWriteEnd = (updateRegion.X + overlayBmp.Width) * pixelSize;
+            
+            // start position for x/y in bytes within overlay to copy data from
+            int overlayReadStartX = updateRegion.X;
+            int overlayReadStartY = updateRegion.Y;
+
+            // set offset within overlay if negative - 
+            // negative means overlay read start position needs to move
+            if (overlayReadStartX < 0) overlayReadStartX = Math.Abs(overlayReadStartX); else overlayReadStartX = 0;
+            if (overlayReadStartY < 0) overlayReadStartY = Math.Abs(overlayReadStartY); else overlayReadStartY = 0;
+
+            //
+            // convert pixels to byte positions
+            overlayReadStartX *= pixelSize;
+            overlayReadStartY *= overlayStride;
+
+            // position within overlay currently being read from
+            int overlayBytePos = overlayReadStartX + overlayReadStartY;
+
+            // number of btye to read/write for each line
+            int lineWriteLength = lineWriteEnd - lineWriteStart;
+
+            ////////////////////////////
+            // Move Data to Source Image
+            ////////////////////////////
 
             System.Runtime.InteropServices.Marshal.Copy(sourcePtr, sourceArgbValues, 0, sourceNumBytes);
             System.Runtime.InteropServices.Marshal.Copy(overlayPtr, overlayArgbValues, 0, overlayNumBytes);
-            
-            for (int i = 0; i < sourceArgbValues.Length; i += pixelSize)
+
+            for (int linePos = byteStartLine + lineWriteStart; linePos < byteEndLine;)
             {
-                mergePixels(ref sourceArgbValues, ref overlayArgbValues, i, bm);
+                for (int b = 0; b < lineWriteLength; b += pixelSize)
+                {
+                    mergePixels(
+                        ref sourceArgbValues,
+                        ref overlayArgbValues,
+                        linePos + b,
+                        overlayBytePos + b,
+                        bm);
+                }
+
+                // go to next line in overlay
+                overlayBytePos += overlayStride;
+                // go to next line in source
+                linePos += sourceStride;
             }
 
             System.Runtime.InteropServices.Marshal.Copy(sourceArgbValues, 0, sourcePtr, sourceNumBytes);
@@ -1267,28 +1422,37 @@ namespace msgc
         }
 
         /// <summary>
-        /// Blends pixels together based on Brush Mode.
+        /// Blends pixels together based on Blend Mode.
         /// </summary>
         /// <param name="source">The pixel array to be used as a base.</param>
         /// <param name="overlay">The pixel array to be applied to the base.</param>
-        /// <param name ="offset">The position of the target pixel within the array</param>
+        /// <param name ="sourcePosition">The position of the target pixel within the source array</param>
+        /// <param name ="overlayPosition">The position of the target pixel within the overlay array</param>
+        /// <param name ="mode">The blending mode used to combine the pixels</param>
         /// <returns></returns>
-        private void mergePixels(ref byte[] source, ref byte[] overlay, int offset, BlendMode mode)
+        private void mergePixels(ref byte[] source, ref byte[] overlay, int sourcePosition, int overlayPosition, BlendMode mode)
         {
             // argbValues are in format BGRA (Blue, Green, Red, Alpha)
-            int b = offset;
-            int g = offset + 1;
-            int r = offset + 2;
-            int a = offset + 3;
+            // position in sourcebytes
+            int b = sourcePosition;
+            int g = sourcePosition + 1;
+            int r = sourcePosition + 2;
+            int a = sourcePosition + 3;
+            // position in overlaybytes
+            int bo = overlayPosition;
+            int go = overlayPosition + 1;
+            int ro = overlayPosition + 2;
+            int ao = overlayPosition + 3;
+
             switch (mode)
             {
                 case BlendMode.DrawAdd:
                     {
                         // skip if overlay has 0% opacity
-                        if (overlay[a] == 0)
+                        if (overlay[ao] == 0)
                             break;
                         
-                        float overAcoef = overlay[a] / (float)byte.MaxValue;
+                        float overAcoef = overlay[ao] / (float)byte.MaxValue;
                         float sourAcoef = source[a] / (float)byte.MaxValue;
                         
                         float A = 1.0f - (1.0f - overAcoef) * (1.0f - sourAcoef);
@@ -1297,46 +1461,46 @@ namespace msgc
                         if (A < 1.0e-6)
                             break;
                         
-                        source[r] = (byte)(overlay[r] * overAcoef / A + source[r] * sourAcoef * (1.0f - overAcoef) / A);
-                        source[g] = (byte)(overlay[g] * overAcoef / A + source[g] * sourAcoef * (1.0f - overAcoef) / A);
-                        source[b] = (byte)(overlay[b] * overAcoef / A + source[b] * sourAcoef * (1.0f - overAcoef) / A);
+                        source[r] = (byte)(overlay[ro] * overAcoef / A + source[r] * sourAcoef * (1.0f - overAcoef) / A);
+                        source[g] = (byte)(overlay[go] * overAcoef / A + source[g] * sourAcoef * (1.0f - overAcoef) / A);
+                        source[b] = (byte)(overlay[bo] * overAcoef / A + source[b] * sourAcoef * (1.0f - overAcoef) / A);
                         
                         break;
                     } // END case BlendMode.DrawAdd
                 case BlendMode.DrawMix:
                     {
                         // skip if overlay has 0% opacity
-                        if (overlay[a] == 0)
+                        if (overlay[ao] == 0)
                             break;
                         
-                        float overAcoef = overlay[a] / (float)byte.MaxValue;
-                        float sourAweight = source[a] / (float)(source[a] + overlay[a]);
+                        float overAcoef = overlay[ao] / (float)byte.MaxValue;
+                        float sourAweight = source[a] / (float)(source[a] + overlay[ao]);
                         float overAweight = 1.0f - sourAweight;
                         
-                        source[a] = (byte)((overlay[a] * overAweight + source[a] * sourAweight));
-                        source[r] = (byte)((overlay[r] * overAweight + source[r] * sourAweight));
-                        source[g] = (byte)((overlay[g] * overAweight + source[g] * sourAweight));
-                        source[b] = (byte)((overlay[b] * overAweight + source[b] * sourAweight));
+                        source[a] = (byte)((overlay[ao] * overAweight + source[a] * sourAweight));
+                        source[r] = (byte)((overlay[ro] * overAweight + source[r] * sourAweight));
+                        source[g] = (byte)((overlay[go] * overAweight + source[g] * sourAweight));
+                        source[b] = (byte)((overlay[bo] * overAweight + source[b] * sourAweight));
 
                         break;
                     } // END case BlendMode.DrawMix
                 case BlendMode.Replace:
                     {
-                        source[a] = overlay[a];
-                        source[r] = overlay[r];
-                        source[g] = overlay[g];
-                        source[b] = overlay[b];
+                        source[a] = overlay[ao];
+                        source[r] = overlay[ro];
+                        source[g] = overlay[go];
+                        source[b] = overlay[bo];
                         break;
                     }
                 case BlendMode.Erase:
                     {
                         // skip if overlay has 0% opacity
-                        if (overlay[a] == 0)
+                        if (overlay[ao] == 0)
                             break;
-                        if (overlay[a] >= source[a])
+                        if (overlay[ao] >= source[a])
                             source[a] = 0;
                         else
-                            source[a] = (byte)(source[a] - overlay[a]);
+                            source[a] = (byte)(source[a] - overlay[ao]);
 
                         // If 0% transparent change colors to white
                         if (source[a] > 0)
@@ -1353,7 +1517,15 @@ namespace msgc
             } // END switch(br)
         }
 
-        private void doesNothing() { /*   ONLY USED SO THAT GENERATED CODE APPEARS BELOW HERE    */}
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////                                                                                                    ////
+        /////                TEMPORARY INTERFACE FUNCTIONS AND TEST FUNCTIONS PAST THIS POINT                    ////
+        /////                                                                                                    ////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        private void doesNothing() { /*   ONLY EXISTS SO THAT GENERATED CODE APPEARS BELOW HERE    */}
 
         private void button_square_brush_Click(object sender, EventArgs e)
         {
@@ -1420,6 +1592,15 @@ namespace msgc
             layer_1.BackColor = Color.Black;
             layer_2.BackColor = Color.Transparent;
             layer_3.BackColor = Color.Transparent;
+
+            if (m_canvasImage != null)
+                m_canvasImage.Dispose();
+            if (display_canvas.Image != null)
+                display_canvas.Image.Dispose();
+            m_canvasImage = new Bitmap(m_finalImage);
+            display_canvas.Image = (Bitmap)m_canvasImage.Clone();
+            drawUI();
+            display_canvas.Refresh();
         }
 
         private void layer_2_Click(object sender, EventArgs e)
@@ -1428,6 +1609,15 @@ namespace msgc
             layer_1.BackColor = Color.Transparent;
             layer_2.BackColor = Color.Black;
             layer_3.BackColor = Color.Transparent;
+
+            if (m_canvasImage != null)
+                m_canvasImage.Dispose();
+            if (display_canvas.Image != null)
+                display_canvas.Image.Dispose();
+            m_canvasImage = new Bitmap(m_finalImage);
+            display_canvas.Image = (Bitmap)m_canvasImage.Clone();
+            drawUI();
+            display_canvas.Refresh();
         }
 
         private void layer_3_Click(object sender, EventArgs e)
@@ -1436,6 +1626,15 @@ namespace msgc
             layer_1.BackColor = Color.Transparent;
             layer_2.BackColor = Color.Transparent;
             layer_3.BackColor = Color.Black;
+
+            if (m_canvasImage != null)
+                m_canvasImage.Dispose();
+            if (display_canvas.Image != null)
+                display_canvas.Image.Dispose();
+            m_canvasImage = new Bitmap(m_finalImage);
+            display_canvas.Image = (Bitmap)m_canvasImage.Clone();
+            drawUI();
+            display_canvas.Refresh();
         }
 
         private void layer_1_visible_Click(object sender, EventArgs e)
@@ -1449,13 +1648,14 @@ namespace msgc
             else
                 layer_1_visible.BackColor = Color.Transparent;
 
-            flattenImage();
+            flattenImage(m_layers[0].getRectangle());
             if (m_canvasImage != null)
                 m_canvasImage.Dispose();
             if (display_canvas.Image != null)
                 display_canvas.Image.Dispose();
             m_canvasImage = new Bitmap(m_finalImage);
             display_canvas.Image = (Bitmap)m_canvasImage.Clone();
+            drawUI();
             display_canvas.Refresh();
         }
 
@@ -1470,13 +1670,14 @@ namespace msgc
             else
                 layer_2_visible.BackColor = Color.Transparent;
 
-            flattenImage();
+            flattenImage(m_layers[1].getRectangle());
             if (m_canvasImage != null)
                 m_canvasImage.Dispose();
             if (display_canvas.Image != null)
                 display_canvas.Image.Dispose();
             m_canvasImage = new Bitmap(m_finalImage);
             display_canvas.Image = (Bitmap)m_canvasImage.Clone();
+            drawUI();
             display_canvas.Refresh();
         }
 
@@ -1491,14 +1692,103 @@ namespace msgc
             else
                 layer_3_visible.BackColor = Color.Transparent;
 
-            flattenImage();
+            flattenImage(m_layers[2].getRectangle());
             if (m_canvasImage != null)
                 m_canvasImage.Dispose();
             if (display_canvas.Image != null)
                 display_canvas.Image.Dispose();
             m_canvasImage = new Bitmap(m_finalImage);
             display_canvas.Image = (Bitmap)m_canvasImage.Clone();
+            drawUI();
             display_canvas.Refresh();
+        }
+
+        private void runUnitTests()
+        {
+            return;
+            int testsFailed = 0;
+            int tempCounter = 0;
+
+            ////////////////////////////////////
+            // image Merge testing
+            Console.Write("\n\nSECTION: Test Merging Images.");
+            Color largeColor = Color.FromArgb(255, 255, 255, 255);
+            Color smallColor = Color.FromArgb(255, 255, 0, 0);
+            Color testPixelColor = Color.FromArgb(255, 0, 0, 255);
+            Point testPixelPosition = new Point(3, 3); // Bitmap (small) must contain this point for the test for this point to have a result - includes 0
+
+            // for testing large image must have larger width and height than small image
+            Bitmap large = new Bitmap(10, 10, PixelFormat.Format32bppArgb);
+            for (int y = 0; y < large.Height; y++)
+                for (int x = 0; x < large.Width; x++)
+                    large.SetPixel(x, y, largeColor);
+            Bitmap small = new Bitmap(5, 5, PixelFormat.Format32bppArgb);
+            for (int y = 0; y < small.Height; y++)
+                for (int x = 0; x < small.Width; x++) {
+                    if (x == testPixelPosition.X - 1 && y == testPixelPosition.Y - 1) small.SetPixel(x, y, testPixelColor);
+                    else small.SetPixel(x, y, smallColor); }
+
+            Bitmap result; Bitmap baseImage; Bitmap overImage; Point offset; Rectangle region;
+
+            /////////////////////
+            // run tests
+            /////////////////////
+
+            Console.Write("\n==================================");
+            Console.Write("\nUNIT TEST STARTED");
+            Console.Write("\n==================================");
+
+            Console.Write("\n  CASE 3: Merge over image that overlaps base image in every direction");
+            baseImage = (Bitmap)small.Clone(); overImage = (Bitmap)large.Clone();
+            overImage.SetPixel(testPixelPosition.X - 1, testPixelPosition.Y - 1, testPixelColor);
+            offset = new Point(-2, -2); region = new Rectangle(offset, baseImage.Size);
+            result = mergeImages(baseImage, overImage, region);
+            if(result.GetPixel(0, 0) == testPixelColor)                                          Console.Write("\n    INFO: Test pixel overrides FIRST pixel in over image - unable to confirm correct color");
+            else if (result.GetPixel(0, 0) != largeColor)                                      { Console.Write("\n    FAILED: FIRST pixel incorrect color."); tempCounter++; }
+            if (result.GetPixel(baseImage.Width / 2, baseImage.Height / 2) == testPixelColor)    Console.Write("\n    INFO: Test pixel overrides CENTER pixel in over image - unable to confirm correct color");
+            else if (result.GetPixel(baseImage.Width / 2, baseImage.Height / 2) != largeColor) { Console.Write("\n    FAILED: CENTER pixel incorrect color."); tempCounter++; }
+            if (result.GetPixel(baseImage.Width - 1, baseImage.Height - 1) == testPixelColor)    Console.Write("\n    INFO: Test pixel overrides LAST pixel in over image - unable to confirm correct color");
+            else if (result.GetPixel(baseImage.Width - 1, baseImage.Height - 1) != largeColor) { Console.Write("\n    FAILED: Last after LAST over pixel incorrect color."); tempCounter++; }
+            if (region.Contains(offset.X + testPixelPosition.X - 1, offset.Y + testPixelPosition.Y - 1)) {
+                if (result.GetPixel(offset.X + testPixelPosition.X - 1, offset.Y + testPixelPosition.Y - 1) != testPixelColor) {
+                 Console.Write("\n    FAILED: Unique pixel wrong color."); tempCounter++; }}
+            else Console.Write("\n    INFO: Test pixel ended up out of range - unable to test for correct stride");
+            baseImage.Dispose(); overImage.Dispose(); result.Dispose();
+
+
+            Console.Write("\n  CASE 1: Merge over image at different positions in relation to each other");
+            baseImage = (Bitmap)large.Clone(); overImage = (Bitmap)small.Clone(); region = new Rectangle(new Point(0, 0), baseImage.Size);
+            for (int y = large.Height * -1; y < large.Height * 2; y++)
+                for (int x = large.Width * -1; x < large.Width * 2; x++){
+                    offset = new Point(x, y); string iteration = "(" + x + "x," + y + "y)";
+                    result = mergeImages(baseImage, overImage, new Rectangle(offset, region.Size));
+                    if (region.Contains(offset)) {
+                        Color c = result.GetPixel(offset.X, offset.Y);
+                        if(c == testPixelColor)  Console.Write("\n    INFO: " + iteration + " Test pixel overrides FIRST pixel in over image - unable to confirm correct color");
+                        else if(c != smallColor) Console.Write("\n    FAILED: " + iteration + " FIRST over pixel incorrect color."); tempCounter++; }
+                    if (region.Contains(offset.X + overImage.Width - 1, offset.Y + overImage.Height - 1)) {
+                        Color c = result.GetPixel(offset.X + overImage.Width - 1, offset.Y + overImage.Height - 1);
+                        if( c == testPixelColor) Console.Write("\n    INFO: " + iteration + " Test pixel overrides LAST pixel in over image - unable to confirm correct color");
+                        else if(c != smallColor) Console.Write("\n    FAILED: " + iteration + " LAST over pixel incorrect color."); tempCounter++; }
+                    if (region.Contains(offset.X + overImage.Width, offset.Y + overImage.Height) && 
+                        result.GetPixel(offset.X + overImage.Width, offset.Y + overImage.Height) != largeColor) {
+                        Console.Write("\n    FAILED: " + iteration + " Pixel after last over pixel incorrect color."); tempCounter++; }
+                    if (region.Contains(testPixelPosition.X + offset.X - 1, testPixelPosition.Y + offset.Y - 1)){
+                        if (result.GetPixel(testPixelPosition.X + offset.X - 1, testPixelPosition.Y + offset.Y - 1) != testPixelColor){
+                            Console.Write("\n    FAILED: " + iteration + " Unique pixel wrong color."); tempCounter++;}}
+                    result.Dispose();
+                }
+            baseImage.Dispose(); overImage.Dispose();
+
+            testsFailed += tempCounter; tempCounter = 0;
+            ////////////////////////////////////
+            //
+
+            Console.Write("\n\n\n==================================");
+            Console.Write("\nUNIT TEST ENDED - TESTS FAILED: " + testsFailed);
+            Console.Write("\n==================================");
+
+
         }
     }
 }

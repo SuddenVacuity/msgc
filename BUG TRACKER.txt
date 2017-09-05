@@ -19,15 +19,14 @@ Description of the issue
 
 
 ***************************************************************************************************
-	ID: coreImage000
-	VERSION: 0.0.0.1
+	ID: coreImage001
+	VERSION: 0.0.0.2
 	STAUS: Pending
-	RISK: MEDIUM
-	Images must be the same size to merge
-		I: Copies of images must be made that are equal size.
-		I: Longer wait time for larger images or many layers being stacked.
-		I: Layers must all have the same sized image.
-		S: 
+	RISK: LOW
+	Redraw regions are larger than they need to be
+		I: The delay when flattening will be based on the layer size instead of the size of what was drawn.
+		I: Larger layers will always have a longer delay
+		S: limit the area that's redrawn the the size of the image in the buffer
 ***************************************************************************************************
 	ID: coreDraw000
 	VERSION: 0.0.0.0
@@ -37,6 +36,19 @@ Description of the issue
 		I: Drawing with mouse input is uneven/disconnected
 		S: Calculate a line from current point to previous point and draw along it
 ***************************************************************************************************
+###################################################################################################
+###################################################################################################
+###################################################################################################
+***************************************************************************************************
+	ID: coreImage000
+	VERSION: 0.0.0.1
+	STAUS: Resolved
+	RISK: MEDIUM
+	Images must be the same size to merge
+		I: Copies of images must be made that are equal size.
+		I: Longer wait time for larger images or many layers being stacked.
+		I: Layers must all have the same sized image.
+		S: Limit redraw region to the size and position of the overlay image
 ***************************************************************************************************
 	ID: coreArtifact000
 	VERSION: 0.0.0.0 (0.0.0.1)

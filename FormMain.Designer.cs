@@ -458,7 +458,6 @@ namespace msgc
             // 
             this.display_canvas.AccessibleRole = System.Windows.Forms.AccessibleRole.Graphic;
             this.display_canvas.BackgroundImage = global::msgc.Properties.Resources.backGround;
-            this.display_canvas.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.display_canvas.Location = new System.Drawing.Point(0, 0);
             this.display_canvas.Name = "display_canvas";
             this.display_canvas.Size = new System.Drawing.Size(151, 139);

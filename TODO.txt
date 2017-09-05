@@ -69,6 +69,6 @@ TODO Checklist
 	[.] Output
 		[o] Display Image
 			[ ] Image view scale
-		[ ] Layer Sizes
+		[o] Layer Sizes
 		[ ] Cursor Image
 		[.] Current tool/color
