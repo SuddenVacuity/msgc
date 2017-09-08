@@ -6,6 +6,10 @@ remov	- A removed feature
 issue	- id of issue - A known issue that's been logged
 fixed	- id of issue - A known issue that's been fixed
 
+
+v0.0.0.3 - Project Restructure - Part 1
+	added core - seperate source files for each component
+
 v0.0.0.2 - Update Image Merging - Image Size
 	added ui - feedback on the size of the current layer
 	added core - support for layers with differently sized images

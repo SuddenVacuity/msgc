@@ -951,6 +951,8 @@ namespace msgc
             this.Name = "FormMain";
             this.Text = "RASTER EDITOR";
             this.Load += new System.EventHandler(this.FormMain_Load);
+            this.ResizeBegin += new System.EventHandler(this.FormMain_ResizeBegin);
+            this.ResizeEnd += new System.EventHandler(this.FormMain_ResizeEnd);
             this.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.FormMain_KeyPress);
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();

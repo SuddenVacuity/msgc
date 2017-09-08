@@ -72,6 +72,16 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="source\Script\Core\Brush.cs" />
+    <Compile Include="source\Script\Core\CanvasFragment.cs" />
+    <Compile Include="source\Script\Core\Layer.cs" />
+    <Compile Include="source\Script\Core\Managers\RasterBlend.cs" />
+    <Compile Include="source\Script\Core\Managers\LayerManager.cs" />
+    <Compile Include="source\Script\Debug\Diagnostics.cs" />
+    <Compile Include="source\Script\Debug\UnitTest\RasterBlendUnitTest.cs" />
+    <Compile Include="source\Script\MainProgram.cs" />
+    <Compile Include="source\Script\Shared\BitField.cs" />
+    <Compile Include="source\Script\Shared\EnumList.cs" />
     <EmbeddedResource Include="FormMain.resx">
       <DependentUpon>FormMain.cs</DependentUpon>
     </EmbeddedResource>
@@ -118,6 +128,9 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="source\Script\UI\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
