@@ -2,7 +2,7 @@
 KNOWN ISSUES
 
 ID: 		unique id of each issue - search to find
-VERSION:	version of the application the reprt was for
+VERSION:	version of the application - reported (resolved)
 STATUS: Reported	- the issue has been reported
 		Processing	- the issue is undergoing implications and risk assessment
 		Pending		- issue is awaiting ongoing status
@@ -16,17 +16,19 @@ RISK: LOW		- Ignorable with no significant repercussions
 Description of the issue
 	I: Projected implications of the issue
 	S: The solution to the issue
+===================================================================================================
+===================================================================================================
 
-
-***************************************************************************************************
-	ID: coreImage001
-	VERSION: 0.0.0.2
-	STAUS: Pending
+	ID: coreImage002
+	VERSION: 0.0.0.4
+	STATUS: Pending
 	RISK: LOW
-	Redraw regions are larger than they need to be
-		I: The delay when flattening will be based on the layer size instead of the size of what was drawn.
-		I: Larger layers will always have a longer delay
-		S: limit the area that's redrawn the the size of the image in the buffer
+	Redrawing large regions creates a noticeable delay
+		I: Will cause the program to hang if large areas need to be redrawn
+		S: Improve efficiency - change pixel-by-pixel nested loop for a line-by-line single loop
+		S: Improve efficiency - take a top-down approach to flattening image and don't write if higher image is opaque
+		S: Improve efficiency - track large opaque/transparent areas of layer images and copy/don't look at them when flattening
+		S: Improve efficiency - move blendmode switch statement outside pixel iteration loop
 ***************************************************************************************************
 	ID: coreDraw000
 	VERSION: 0.0.0.0
@@ -38,10 +40,21 @@ Description of the issue
 ***************************************************************************************************
 ###################################################################################################
 ###################################################################################################
+####################################      RESOLVED ISSUES      ####################################
+###################################################################################################
 ###################################################################################################
 ***************************************************************************************************
+	ID: coreImage001
+	VERSION: 0.0.0.2 (0.0.0.4)
+	STAUS: Resolved
+	RISK: LOW
+	Redraw regions are larger than they need to be
+		I: The delay when flattening will be based on the layer size instead of the size of what was drawn.
+		I: Larger layers will always have a longer delay
+		S: Limit the redraw region to the intersection of the redraw zone and the layer image size and position
+***************************************************************************************************
 	ID: coreImage000
-	VERSION: 0.0.0.1
+	VERSION: 0.0.0.1 (0.0.0.2)
 	STAUS: Resolved
 	RISK: MEDIUM
 	Images must be the same size to merge

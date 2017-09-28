@@ -34,12 +34,12 @@ namespace msgc
             this.AllowTransparency = true;
             display_canvas.Size = new Size(1000, 1000);
 
-            m_program.init(new Rectangle(display_canvas.Location, display_canvas.Size));
+            m_program.init(display_canvas.Size);
 
             button_round_brush.BackColor = Color.Black;
 
             Bitmap displayImage = m_program.getCanvasImageCopy();
-
+            display_canvas.Size = displayImage.Size;
             display_canvas.Image = displayImage;
 
             // set up color boxes
@@ -127,14 +127,8 @@ namespace msgc
         private void newToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // clear all persisting images
-            if (display_canvas.Image != null)
-                display_canvas.Image.Dispose();
-
             m_program.createNewProject(display_canvas.Size);
-            display_canvas.Image = m_program.getCanvasImageCopy();
-
-            // update display
-            display_canvas.Refresh();
+            updateCanvasImage();
         }
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -459,12 +453,7 @@ namespace msgc
         private void display_canvas_MouseDown(object sender, MouseEventArgs e)
         {
             m_program.onMouseDown(0, display_canvas.PointToClient(Cursor.Position));
-
-            if (display_canvas.Image != null)
-                display_canvas.Image.Dispose();
-
-            display_canvas.Image = m_program.getCanvasImageCopy();
-            display_canvas.Refresh();
+            updateCanvasImage();
         }
 
         /// <summary>
@@ -479,31 +468,30 @@ namespace msgc
         private void display_canvas_MouseMove(object sender, MouseEventArgs e)
         {
             m_program.onMouseMove(0, display_canvas.PointToClient(Cursor.Position));
-            
-            if (display_canvas.Image != null)
-                display_canvas.Image.Dispose();
-            
-            display_canvas.Image = m_program.getCanvasImageCopy();
-            display_canvas.Refresh();
+            updateCanvasImage();
         }
-        
+
         /// <summary>
         /// Runs when mouse up event trggers.
-        /// Sets m_isDrawing to false.
-        /// Flattens all layers and buffer to m_finalImage.
-        /// Copies Image to m_canvasImage and display_canvas.
-        /// Clears and m_drawBuffer and resets m_redrawDrawBufferZone.
-        /// Runs garbage collection.
+        /// If m_isDrawing is true: 
+        ///    Sets m_isDrawing to false.
+        ///    Flattens all layers and buffer to m_finalImage.
+        ///    Copies Image to m_canvasImage and display_canvas.
+        ///    Clears and m_drawBuffer and resets m_redrawDrawBufferZone.
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void display_canvas_MouseUp(object sender, MouseEventArgs e)
         {
             m_program.onMouseUp(0);
-            
+            updateCanvasImage();
+        }
+
+        private void updateCanvasImage()
+        {
             if (display_canvas.Image != null)
                 display_canvas.Image.Dispose();
-            
+
             display_canvas.Image = m_program.getCanvasImageCopy();
             display_canvas.Refresh();
         }
@@ -580,12 +568,8 @@ namespace msgc
             layer_1.BackColor = Color.Black;
             layer_2.BackColor = Color.Transparent;
             layer_3.BackColor = Color.Transparent;
-            
-            if (display_canvas.Image != null)
-                display_canvas.Image.Dispose();
 
-            display_canvas.Image = m_program.getCanvasImageCopy();
-            display_canvas.Refresh();
+            updateCanvasImage();
         }
 
         private void layer_2_Click(object sender, EventArgs e)
@@ -594,12 +578,8 @@ namespace msgc
             layer_1.BackColor = Color.Transparent;
             layer_2.BackColor = Color.Black;
             layer_3.BackColor = Color.Transparent;
-            
-            if (display_canvas.Image != null)
-                display_canvas.Image.Dispose();
 
-            display_canvas.Image = m_program.getCanvasImageCopy();
-            display_canvas.Refresh();
+            updateCanvasImage();
         }
 
         private void layer_3_Click(object sender, EventArgs e)
@@ -609,11 +589,7 @@ namespace msgc
             layer_2.BackColor = Color.Transparent;
             layer_3.BackColor = Color.Black;
 
-            if (display_canvas.Image != null)
-                display_canvas.Image.Dispose();
-
-            display_canvas.Image = m_program.getCanvasImageCopy();
-            display_canvas.Refresh();
+            updateCanvasImage();
         }
 
         private void layer_1_visible_Click(object sender, EventArgs e)
@@ -625,11 +601,7 @@ namespace msgc
             else
                 box.BackColor = Color.Transparent;
 
-            if (display_canvas.Image != null)
-                display_canvas.Image.Dispose();
-
-            display_canvas.Image = m_program.getCanvasImageCopy();
-            display_canvas.Refresh();
+            updateCanvasImage();
         }
 
         private void layer_2_visible_Click(object sender, EventArgs e)
@@ -641,11 +613,7 @@ namespace msgc
             else
                 box.BackColor = Color.Transparent;
 
-            if (display_canvas.Image != null)
-                display_canvas.Image.Dispose();
-
-            display_canvas.Image = m_program.getCanvasImageCopy();
-            display_canvas.Refresh();
+            updateCanvasImage();
         }
 
         private void layer_3_visible_Click(object sender, EventArgs e)
@@ -657,11 +625,7 @@ namespace msgc
             else
                 box.BackColor = Color.Transparent;
 
-            if (display_canvas.Image != null)
-                display_canvas.Image.Dispose();
-
-            display_canvas.Image = m_program.getCanvasImageCopy();
-            display_canvas.Refresh();
+            updateCanvasImage();
         }
 
         private void runUnitTests()

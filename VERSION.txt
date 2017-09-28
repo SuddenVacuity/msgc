@@ -6,6 +6,12 @@ remov	- A removed feature
 issue	- id of issue - A known issue that's been logged
 fixed	- id of issue - A known issue that's been fixed
 
+v0.0.0.4 - Project Restructure Part 2 & Increase Merge Image Efficiency
+	added core - class to store program directories and environment variables
+	fixed core -              - Removed old unused sections of code
+	fixed core -              - Moved duplicate code to its own methods
+	fixed core - coreImage001 - Redraw regions are larger than they need to be
+	issue core - coreImage002 - Redrawing large regions creates a noticeable delay
 
 v0.0.0.3 - Project Restructure - Part 1
 	added core - seperate source files for each component
