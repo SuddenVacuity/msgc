@@ -43,43 +43,38 @@ public static class RasterBlend
         IntPtr overlayPtr = overlayBmpData.Scan0;
 
         int sourceNumBytes = sourceBmp.Width * sourceBmp.Height * pixelSize;
-        byte[] sourceArgbValues = new byte[sourceNumBytes];
 
-        int overlayNumBytes = overlayBmp.Width * overlayBmp.Height * pixelSize;
-        byte[] overlayArgbValues = new byte[overlayNumBytes];
-
+        // the number of bytes in each line for source/overlay image
+        int sourceStride = source.Width * pixelSize;
+        int overlayStride = overlay.Width * pixelSize;
+        
         ////////////////////////////
         // Read/Write Points
         ////////////////////////////
 
-        int sourceStride = source.Width * pixelSize;
-        int overlayStride = overlay.Width * pixelSize;
-
         // the first and last line in source image to write to
         int byteStartLine = offset.Y * sourceStride;
         int byteEndLine = (overlay.Size.Height * sourceStride) + byteStartLine;
-
-        // position in each line to start and stop
-        int lineWriteStart = offset.X * pixelSize;
-        int lineWriteEnd = (overlay.Width * pixelSize) + lineWriteStart;
-
-        // get start/end lines
+        
+        // check source byte start/stop points against the
+        // overlay offset and size
         // check specified region bounds
         if (byteStartLine < offset.Y * sourceStride)
             byteStartLine = offset.Y * sourceStride;
         if (byteEndLine > (offset.Y + size.Height) * sourceStride)
             byteEndLine = (offset.Y + size.Height) * sourceStride;
-        // check image bounds
         if (byteStartLine < 0)
             byteStartLine = 0;
-        if (byteEndLine > sourceArgbValues.Length)
-            byteEndLine = sourceArgbValues.Length;
+        if (byteEndLine > sourceNumBytes)
+            byteEndLine = sourceNumBytes;
 
         // get start/stop position within each line
-        // check image bounds
+        // in the source image
+        int lineWriteStart = offset.X * pixelSize;
+        int lineWriteEnd = (overlay.Width * pixelSize) + lineWriteStart;
+
+        // check image bounds against the line write start/end points
         // check specified region bounds
-        if (lineWriteStart < offset.X * pixelSize)
-            lineWriteStart = offset.X * pixelSize;
         if (lineWriteEnd > (offset.X + size.Width) * pixelSize)
             lineWriteEnd = (offset.X + size.Width) * pixelSize;
         if (lineWriteStart < 0)
@@ -87,114 +82,124 @@ public static class RasterBlend
         if (lineWriteEnd > source.Width * pixelSize)
             lineWriteEnd = source.Width * pixelSize;
 
-        // start position for x/y in bytes within overlay to copy data from
+        // the (x, y) pixel position in overlay to read from
         int overlayReadStartX = offset.X;
         int overlayReadStartY = offset.Y;
 
-        // set offset within overlay if negative - 
-        // negative means overlay read start position needs to move
-        if (overlayReadStartX < 0) overlayReadStartX = Math.Abs(overlayReadStartX); else overlayReadStartX = 0;
-        if (overlayReadStartY < 0) overlayReadStartY = Math.Abs(overlayReadStartY); else overlayReadStartY = 0;
-
-        //
-        // convert pixels to byte positions
+        // negative offset means overlay is left/up relative to source
+        // and the start position needs to be offset
+        if (offset.X < 0)
+            overlayReadStartX = Math.Abs(overlayReadStartX);
+        else
+            overlayReadStartX = 0;
+        if (offset.Y < 0)
+            overlayReadStartY = Math.Abs(overlayReadStartY);
+        else
+            overlayReadStartY = 0;
+        
+        // convert pixel positions to byte positions
         overlayReadStartX *= pixelSize;
         overlayReadStartY *= overlayStride;
 
         // position within overlay currently being read from
         int overlayBytePos = overlayReadStartX + overlayReadStartY;
-        int sourceStartPos = byteStartLine + lineWriteStart;
+        int sourceBytePos = byteStartLine + lineWriteStart;
 
-        // number of btye to read/write for each line
+        // number of bytes to read/write for each line
         int lineWriteLength = lineWriteEnd - lineWriteStart;
+        
+        // the number of lines in teh image to be merged
+        int lineWriteHeight = ((byteEndLine + lineWriteStart) - sourceBytePos) / sourceStride;
 
         ////////////////////////////
         // Move Data to Source Image
         ////////////////////////////
 
-        System.Runtime.InteropServices.Marshal.Copy(sourcePtr, sourceArgbValues, 0, sourceNumBytes);
-        System.Runtime.InteropServices.Marshal.Copy(overlayPtr, overlayArgbValues, 0, overlayNumBytes);
-        
-        cyclePixels(
-            ref sourceArgbValues, ref overlayArgbValues,
-            sourceStartPos, byteEndLine,
-            sourceStride, overlayStride,
-            overlayBytePos, lineWriteLength,
-            pixelSize, mode);
+        if (lineWriteHeight > 0 && lineWriteLength > 0)
+        {
+            // create data buffers to hold the data from each line
+            byte[] sourceLine = new byte[lineWriteLength];
+            byte[] overlayLine = new byte[lineWriteLength];
 
-        System.Runtime.InteropServices.Marshal.Copy(sourceArgbValues, 0, sourcePtr, sourceNumBytes);
+            // move the bmpdata pointer to the start position
+            sourcePtr = IntPtr.Add(sourcePtr, sourceBytePos);
+            overlayPtr = IntPtr.Add(overlayPtr, overlayBytePos);
+
+            for (int i = 0; i < lineWriteHeight; i++)
+            {
+                // copy data from the bmp data to the buffers
+                System.Runtime.InteropServices.Marshal.Copy(sourcePtr, sourceLine, 0, lineWriteLength);
+                System.Runtime.InteropServices.Marshal.Copy(overlayPtr, overlayLine, 0, lineWriteLength);
+
+                // merge the overlay pixels to the source pixels
+                scanLine(ref sourceLine, ref overlayLine, pixelSize, mode);
+
+                // copy the result data to the result image
+                System.Runtime.InteropServices.Marshal.Copy(sourceLine, 0, sourcePtr, lineWriteLength);
+
+                // repoint the bmp data pointer to the next line
+                sourcePtr = IntPtr.Add(sourcePtr, sourceStride);
+                overlayPtr = IntPtr.Add(overlayPtr, overlayStride);
+            }
+        }
+
         sourceBmp.UnlockBits(sourceBmpData);
         overlayBmp.UnlockBits(overlayBmpData);
+
+        overlayBmp.Dispose();
 
         return sourceBmp;
     }
 
-    private static void cyclePixels(
-        ref byte[] sourceData, ref byte[] overlayData,
-        int sourceStartWrite, int sourceStopWrite,
-        int sourceStride, int overlayStride,
-        int overlayReadStart, int readWriteStride,
-        int pixelSize, BlendMode mode)
+    /// <summary>
+    /// Merges every pixel from two same-length arrays of bytes.
+    /// </summary>
+    /// <param name="source">The array of pixels used as the base.</param>
+    /// <param name="overlay">The array of pixels applied to the base.</param>
+    /// <param name="pixelSize">The number of bytes in each pixel</param>
+    /// <param name="mode">The blend mode used to merge the pixels</param>
+    private static void scanLine(ref byte[] source, ref byte[] overlay, int pixelSize, BlendMode mode)
     {
-        int overlayPos = overlayReadStart;
-        for (int sourcePos = sourceStartWrite; sourcePos < sourceStopWrite;)
+        // cycle though each pixel in the arrays
+        for (int i = 0; i < source.Length; i += pixelSize)
         {
-            for (int b = 0; b < readWriteStride; b += pixelSize)
-            {
-                mergePixels(
-                    ref sourceData,
-                    ref overlayData,
-                    sourcePos + b,
-                    overlayPos + b,
-                    mode);
-            }
-
-            // go to next line in overlay
-            overlayPos += overlayStride;
-            // go to next line in source
-            sourcePos += sourceStride;
+            // apply the overlay pixel to the source pixel
+            mergePixel(ref source, ref overlay, i, mode);
         }
     }
 
-
     /// <summary>
-    /// Blends pixels together based on Blend Mode.
+    /// Merges one pixel within an array with another pixel in the same position in another array.
     /// </summary>
-    /// <param name="source">The pixel array to be used as a base.</param>
-    /// <param name="overlay">The pixel array to be applied to the base.</param>
-    /// <param name ="sourcePosition">The position of the target pixel within the source array</param>
-    /// <param name ="overlayPosition">The position of the target pixel within the overlay array</param>
-    /// <param name ="mode">The blending mode used to combine the pixels</param>
-    /// <returns></returns>
-    private static void mergePixels(ref byte[] source, ref byte[] overlay, int sourcePosition, int overlayPosition, BlendMode mode)
+    /// <param name="source">The array containing the pixels used as a base.</param>
+    /// <param name="overlay">The array with the pixels apllied to the base</param>
+    /// <param name="position">The position within the arrays the target pixels are.</param>
+    /// <param name="mode">The blend mode used to merge the pixels.</param>
+    public static void mergePixel(ref byte[] source, ref byte[] overlay, int position, BlendMode mode)
     {
         // argbValues are in format BGRA (Blue, Green, Red, Alpha)
-        // position in sourcebytes
-        int b = sourcePosition;
-        int g = sourcePosition + 1;
-        int r = sourcePosition + 2;
-        int a = sourcePosition + 3;
-        // position in overlaybytes
-        int bo = overlayPosition;
-        int go = overlayPosition + 1;
-        int ro = overlayPosition + 2;
-        int ao = overlayPosition + 3;
+        int b = position + 0;
+        int g = position + 1;
+        int r = position + 2;
+        int a = position + 3;
+
+        if (position >= source.Length &&
+            position >= overlay.Length)
+            return;
 
         switch (mode)
         {
-            case BlendMode.DrawAdd:
+            case BlendMode.Add:
                 {
                     ////////////////////////////////////////////
                     // 
                     ////////////////////////////////////////////
 
                     // skip if overlay has 0% opacity
-                    if (overlay[ao] == 0)
+                    if (overlay[a] == 0)
                         break;
-                    //if (source[a] == 255)
-                    //    break;
 
-                    float overAcoef = overlay[ao] / (float)byte.MaxValue;
+                    float overAcoef = overlay[a] / (float)byte.MaxValue;
                     float sourAcoef = source[a] / (float)byte.MaxValue;
 
                     float A = 1.0f - (1.0f - overAcoef) * (1.0f - sourAcoef);
@@ -203,13 +208,13 @@ public static class RasterBlend
                     if (A < 1.0e-6)
                         break;
 
-                    source[r] = (byte)(overlay[ro] * overAcoef / A + source[r] * sourAcoef * (1.0f - overAcoef) / A);
-                    source[g] = (byte)(overlay[go] * overAcoef / A + source[g] * sourAcoef * (1.0f - overAcoef) / A);
-                    source[b] = (byte)(overlay[bo] * overAcoef / A + source[b] * sourAcoef * (1.0f - overAcoef) / A);
+                    source[r] = (byte)(overlay[r] * overAcoef / A + source[r] * sourAcoef * (1.0f - overAcoef) / A);
+                    source[g] = (byte)(overlay[g] * overAcoef / A + source[g] * sourAcoef * (1.0f - overAcoef) / A);
+                    source[b] = (byte)(overlay[b] * overAcoef / A + source[b] * sourAcoef * (1.0f - overAcoef) / A);
 
                     break;
-                } // END case BlendMode.DrawAdd
-            case BlendMode.DrawMix:
+                } // END case BlendMode.Add
+            case BlendMode.Mix:
                 {
                     ////////////////////////////////////////////
                     // Averages the source pixels argb with the
@@ -218,40 +223,30 @@ public static class RasterBlend
                     ////////////////////////////////////////////
 
                     // skip if overlay has 0% opacity
-                    if (overlay[ao] == 0)
+                    if (overlay[a] == 0)
                         break;
 
-                    float overAcoef = overlay[ao] / (float)byte.MaxValue;
-                    float sourAweight = source[a] / (float)(source[a] + overlay[ao]);
+                    float overAcoef = overlay[a] / (float)byte.MaxValue;
+                    float sourAweight = source[a] / (float)(source[a] + overlay[a]);
                     float overAweight = 1.0f - sourAweight;
 
-                    source[a] = (byte)((overlay[ao] * overAweight + source[a] * sourAweight));
-                    source[r] = (byte)((overlay[ro] * overAweight + source[r] * sourAweight));
-                    source[g] = (byte)((overlay[go] * overAweight + source[g] * sourAweight));
-                    source[b] = (byte)((overlay[bo] * overAweight + source[b] * sourAweight));
+                    source[a] = (byte)((overlay[a] * overAweight + source[a] * sourAweight));
+                    source[r] = (byte)((overlay[r] * overAweight + source[r] * sourAweight));
+                    source[g] = (byte)((overlay[g] * overAweight + source[g] * sourAweight));
+                    source[b] = (byte)((overlay[b] * overAweight + source[b] * sourAweight));
 
                     break;
-                } // END case BlendMode.DrawMix
+                } // END case BlendMode.Mix
             case BlendMode.Replace:
                 {
                     ////////////////////////////////////////////
                     // Replaces each pixel with new pixel
                     ////////////////////////////////////////////
 
-                    //// adding this section slightly increases speed for large areas of transparency
-                    //if (overlay[ao] == 0)
-                    //{
-                    //    source[a] = 0;
-                    //    source[r] = 0;
-                    //    source[g] = 0;
-                    //    source[b] = 0;
-                    //    break;
-                    //}
-
-                    source[a] = overlay[ao];
-                    source[r] = overlay[ro];
-                    source[g] = overlay[go];
-                    source[b] = overlay[bo];
+                    source[a] = overlay[a];
+                    source[r] = overlay[r];
+                    source[g] = overlay[g];
+                    source[b] = overlay[b];
                     break;
                 }
             case BlendMode.Erase:
@@ -264,12 +259,12 @@ public static class RasterBlend
                     ////////////////////////////////////////////
 
                     // skip if overlay has 0% opacity
-                    if (overlay[ao] == 0)
+                    if (overlay[a] == 0)
                         break;
-                    if (overlay[ao] >= source[a])
+                    if (overlay[a] >= source[a])
                         source[a] = 0;
                     else
-                        source[a] = (byte)(source[a] - overlay[ao]);
+                        source[a] = (byte)(source[a] - overlay[a]);
 
                     // If 0% transparent change colors to white
                     if (source[a] > 0)
@@ -283,7 +278,7 @@ public static class RasterBlend
                 } // END case BlendMode.Erase
             case BlendMode.None: break;
             default: Console.Write("\nUnknown Blend Mode"); break;
-        } // END switch(br)
+        } // END switch(mode)
     }
-
+    
 }

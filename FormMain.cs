@@ -102,13 +102,26 @@ namespace msgc
 
             bool isShiftPressed = (Control.ModifierKeys == Keys.Shift);
             bool isControlPressed = (Control.ModifierKeys == Keys.Control);
+            bool isAltPressed = (Control.ModifierKeys == Keys.Alt);
 
-            switch (key)
+            int modifiers = 0;
+
+            if (isShiftPressed)
+                modifiers |= 1;
+            if (isControlPressed)
+                modifiers |= 2;
+            if (isAltPressed)
+                modifiers |= 4;
+
+            bool refreshDisplay = m_program.onKeyPress(0, key, modifiers);
+            
+            if (refreshDisplay == true)
             {
-                default: break;
+                updateCanvasImage();
+                display_canvas.Refresh();
             }
-            Console.Write("\nA key was pressed");
 
+            Console.Write("\nA key was pressed");
         }
 
         //////////////////////////////////////////////////////////////////
@@ -127,7 +140,12 @@ namespace msgc
         private void newToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // clear all persisting images
-            m_program.createNewProject(display_canvas.Size);
+            Bitmap bmp = new Bitmap(700, 700, PixelFormat.Format32bppArgb);
+
+            display_canvas.Size = bmp.Size;
+            display_canvas.Image = bmp;
+
+            m_program.createNewProject(bmp, 3);
             updateCanvasImage();
         }
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
@@ -266,11 +284,11 @@ namespace msgc
         /////////////////////////////////////
         private void button_pencil_Click(object sender, EventArgs e)
         {
-            m_program.setBrushMode(BlendMode.DrawAdd);
+            m_program.setBrushMode(BlendMode.ReplaceClampAlpha, BlendMode.Add);
         }
         private void button_eraser_Click(object sender, EventArgs e)
         {
-            m_program.setBrushMode(BlendMode.Erase);
+            m_program.setBrushMode(BlendMode.Erase, BlendMode.Erase);
         }
 
         /////////////////////////////////////
@@ -526,21 +544,10 @@ namespace msgc
             button_square_brush.BackColor = Color.Transparent;
 
             Bitmap brushImage;
-            string dir = Environment.CurrentDirectory + @"//standard_round.png";
+            string dir = m_program.m_environment.getBrushDirectory() + @"//standard_round.png";
             if (System.IO.File.Exists(dir))
             {
                 brushImage = new Bitmap(dir);
-                for (int i = 0; i < brushImage.Size.Height; i++)
-                    for (int j = 0; j < brushImage.Size.Width; j++)
-                    {
-                        Color c = brushImage.GetPixel(j, i);
-                        Color inverted = Color.FromArgb(
-                            c.A,
-                            byte.MaxValue - c.R,
-                            byte.MaxValue - c.G,
-                            byte.MaxValue - c.B);
-                        brushImage.SetPixel(j, i, inverted);
-                    }
             }
             else
             {
@@ -655,6 +662,99 @@ namespace msgc
         private void FormMain_ResizeEnd(object sender, EventArgs e)
         {
 
+        }
+
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Form aboutMessageBox = new Form();
+            aboutMessageBox.ShowInTaskbar = false;
+            aboutMessageBox.Width = 500;
+            aboutMessageBox.Height = 300;
+            aboutMessageBox.Text = "About this application";
+            aboutMessageBox.StartPosition = FormStartPosition.CenterScreen;
+            aboutMessageBox.FormBorderStyle = FormBorderStyle.FixedDialog;
+            aboutMessageBox.MaximizeBox = false;
+            aboutMessageBox.MinimizeBox = false;
+
+            Label name = new Label();
+            name.Font = new Font(name.Font.Name, 16, FontStyle.Bold);
+            name.Left = 50;
+            name.Top = 20;
+            name.Width = 300;
+            name.Height = 30;
+            name.Text = "msgc - " + m_program.version;
+
+            Label aboutText = new Label();
+            aboutText.Left = 50;
+            aboutText.Top = 45;
+            aboutText.Width = 400;
+            aboutText.Height = 130;
+            aboutText.Text = "\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|";
+
+            Label copyright = new Label();
+            copyright.Left = 50;
+            copyright.Top = 195;
+            copyright.Width = 200;
+            copyright.Text = "© Gerald Coggins 2017";
+
+            Button confirmButton = new Button();
+            confirmButton.Left = 200;
+            confirmButton.Width = 100;
+            confirmButton.Top = 220;
+            confirmButton.Text = "Close";
+            confirmButton.Click += (vvv, bbb) =>
+            {
+                aboutMessageBox.Close();
+            };
+
+            aboutMessageBox.Controls.Add(name);
+            aboutMessageBox.Controls.Add(aboutText);
+            aboutMessageBox.Controls.Add(copyright);
+            aboutMessageBox.Controls.Add(confirmButton);
+
+            aboutMessageBox.ShowDialog();
+        }
+
+        private void controlsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Form controlsMessageBox = new Form();
+            controlsMessageBox.ShowInTaskbar = false;
+            controlsMessageBox.Width = 500;
+            controlsMessageBox.Height = 300;
+            controlsMessageBox.Text = "Controls";
+            controlsMessageBox.StartPosition = FormStartPosition.CenterScreen;
+            controlsMessageBox.FormBorderStyle = FormBorderStyle.FixedDialog;
+            controlsMessageBox.MaximizeBox = false;
+            controlsMessageBox.MinimizeBox = false;
+
+            Label controlsText = new Label();
+            controlsText.Font = new Font(FontFamily.GenericMonospace, controlsText.Font.Size, controlsText.Font.Style);
+            controlsText.Left = 10;
+            controlsText.Top = 10;
+            controlsText.Width = 475;
+            controlsText.Height = 195;
+            controlsText.Text =
+                "Debug shortcuts:\n" +
+                "\nKeys:" +
+                "\n   W - New a project with 3 4000x4000 transparent images" +
+                "\n   E - New a project with 3 4000x4000 semi-transparent images" +
+                "\n   R - New a project with 3 4000x4000 solid white image" +
+                "\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|";
+
+            Button confirmButton = new Button();
+            confirmButton.Left = 200;
+            confirmButton.Width = 100;
+            confirmButton.Top = 220;
+            confirmButton.Text = "Close";
+            confirmButton.Click += (vvv, bbb) =>
+            {
+                controlsMessageBox.Close();
+            };
+            
+            controlsMessageBox.Controls.Add(controlsText);
+            controlsMessageBox.Controls.Add(confirmButton);
+
+            controlsMessageBox.ShowDialog();
         }
     }
 }

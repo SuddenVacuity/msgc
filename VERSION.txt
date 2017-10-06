@@ -3,8 +3,21 @@ VERSION HISTORY
 
 added	- An added feature
 remov	- A removed feature
-issue	- id of issue - A known issue that's been logged
 fixed	- id of issue - A known issue that's been fixed
+issue	- id of issue - A known issue that's been logged 
+	(an * before the id of the issue means part of the solution has been completed
+	 and the description of the issue will state what was done)
+	 
+
+v0.0.0.5 - Improved Image Merging & Test Shortcuts
+	added ui - information about the program
+	added ui - key inputs for testing with different images
+	added core - get/set functions in LayerManager for the images contianed within layers
+	fixed core -               - made changes to the Brush/drawbuffer/LayerManager systems to make it more flexible
+	fixed core - *coreImage002 - merging images now reads/writes pixels in images by line
+	fixed core -               - creating new projects is now more flexible
+	issue core - coreMemory000 - Clicking the drawing area rapidly causes excessive memory use
+
 
 v0.0.0.4 - Project Restructure Part 2 & Increase Merge Image Efficiency
 	added core - class to store program directories and environment variables

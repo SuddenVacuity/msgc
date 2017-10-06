@@ -10,27 +10,26 @@ public class LayerManager
     private Diagnostics diagnostics = new Diagnostics("LayerManager", ConsoleColor.Green);
     private int m_layerCount;
     private int m_layerCurrent;
-    private int m_maxLayers = 255;
+    private int m_maxLayers;
     private Layer[] m_layers;
     // the size of an image that is made off all layers
-    private Point m_layersOffset;
     private Size m_layerTotalSize;
 
-    public LayerManager()
+    public LayerManager(int maxLayers = 255)
     {
         diagnostics.setActive(true);
 
+        m_maxLayers = maxLayers;
         m_layers = new Layer[m_maxLayers];
         m_layerTotalSize = new Size(0, 0);
-        m_layersOffset = new Point(0, 0);
     }
 
     /// <summary>
-    /// Adds a new layer to the manager
+    /// Creates a layer from the name, position and a copy of image and adds it to the layer manager. 
     /// </summary>
     /// <param name="name">The name of the layer</param>
     /// <param name="position">The position of the image relative to the final image</param>
-    /// <param name="image">The image this layer will contain</param>
+    /// <param name="image">The image this layer will contain a copy of</param>
     /// <param name="flags">Extra data about the layer</param>
     public void addLayer(string name, Point position, Bitmap image, int flags = 0)
     {
@@ -89,10 +88,12 @@ public class LayerManager
         // area to redraw relative to the layer image
         // intersect to reduce area to redraw
         Point redrawLocalPosition = redrawRegion.Location;
+
         // offset by layer image position
         redrawLocalPosition.X -= imageRegion.X;
         redrawLocalPosition.Y -= imageRegion.Y;
-        // apply drawbuffer to layer image if l is current layer
+
+        // get the layer's image
         Bitmap layerImage = layer.getImage();
 
         // image that will be a cropped section of drawbuffer
@@ -112,18 +113,19 @@ public class LayerManager
                 redrawRegion,
                 GraphicsUnit.Pixel);
         }
-
-        // apply the cropped image to the current layer image
+        
+        //// apply the cropped image to the current layer image
         Bitmap bmp = RasterBlend.mergeImages(
             layerImage,
             bufferCrop,
             redrawLocalPosition,
             redrawRegion.Size,
             mode);
+        
+        bufferCrop.Dispose();
 
         // set the new image as the layer image
         layer.setImage(bmp);
-        bufferCrop.Dispose();
     }
     
     /// <summary>
@@ -133,10 +135,15 @@ public class LayerManager
     /// <param name="updateRegion">The region within the final image that will be changed</param>
     /// <param name="cachedImage">The previous final image</param>
     /// <returns></returns>
-    public Bitmap flattenImage(Size displaySize, Rectangle updateRegion, Bitmap cachedImage)
+    public Bitmap flattenImage(Size displaySize, Rectangle updateRegion, int startPos, int endPos, Bitmap cachedImage)
     {
         diagnostics.restartTimer();
 
+        if (startPos < 0)
+            startPos = 0;
+        if (endPos > m_layerCount)
+            endPos = m_layerCount;
+        
         // copy previous image into the result to reduce work needed
         Bitmap result = cachedImage;
         
@@ -160,7 +167,7 @@ public class LayerManager
         
         // move pixels from drawBuffer to display_canvas
         // flatten all layers
-        for (int l = 0; l < m_layerCount; l++)
+        for (int l = startPos; l < endPos; l++)
         //for (int l = m_layerCount - 1; l >= 0; l--)
         {
             // get a handle on the layer
@@ -218,7 +225,7 @@ public class LayerManager
                 layerCrop,
                 new Point(redrawRegion.X -= updateRegion.X, redrawRegion.Y -= updateRegion.Y),//redrawLocalPosition,
                 redrawRegion.Size,
-                BlendMode.DrawAdd);
+                BlendMode.Add);
 
             layerCrop.Dispose();
 
@@ -236,7 +243,10 @@ public class LayerManager
             redrawnSection,
             updateRegion.Location,
             updateRegion.Size,
-            BlendMode.DrawAdd);
+            BlendMode.Add);
+
+        // this is now the final version of Bitmap stack
+        redrawnSection.Dispose();
 
         if (result != null)
             result.Dispose();
@@ -399,5 +409,25 @@ public class LayerManager
     public Rectangle getCurrentLayerRegion()
     {
         return m_layers[m_layerCurrent].getRectangle();
+    }
+
+    /// <summary>
+    ///  Returns a handle to the image contianed within the specified layer.
+    /// </summary>
+    /// <param name="layerId">The id of the layer to get the image from</param>
+    /// <returns></returns>
+    public Bitmap getLayerImage(int layerId)
+    {
+        return m_layers[layerId].getImage();
+    }
+
+    /// <summary>
+    /// Stores a copy of the image in the specified layer.
+    /// </summary>
+    /// <param name="layerId"></param>
+    /// <param name="image"></param>
+    public void setLayerImage(int layerId, Bitmap image)
+    {
+        m_layers[layerId].setImage(image);
     }
 }

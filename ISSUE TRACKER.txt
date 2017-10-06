@@ -19,15 +19,28 @@ Description of the issue
 ===================================================================================================
 ===================================================================================================
 
+	ID: coreMemory000
+	Version: 0.0.0.5
+	Status: Pending
+	RISK: 
+	Clicking the drawing area rapidly causes excessive memory use
+		I: With very large images it's possible to get out of memory exception
+			-the issue is in MainProgram.onMouseUp(...)
+			-updateFinalImage(...), drawUI() and clearDrawBuffer() are not the source
+			-all the images in LayerManager.applyDrawBuffer(...) appear to be disposed of properly
+			-it seems to be in RasterBlend.mergeImages(...)
+			-possibly the way bitmap.UnlockBits(...) is handled by garbage collectioin
+		S: Find the image thats not being disposed and dispose
+***************************************************************************************************
 	ID: coreImage002
 	VERSION: 0.0.0.4
-	STATUS: Pending
+	STATUS: Ongoing
 	RISK: LOW
 	Redrawing large regions creates a noticeable delay
 		I: Will cause the program to hang if large areas need to be redrawn
-		S: Improve efficiency - change pixel-by-pixel nested loop for a line-by-line single loop
+		S: COMPLETE - Improve efficiency - copy relavant lines form each image and combine them instead of copy the whole image
 		S: Improve efficiency - take a top-down approach to flattening image and don't write if higher image is opaque
-		S: Improve efficiency - track large opaque/transparent areas of layer images and copy/don't look at them when flattening
+		S: Improve efficiency - break the images in each layer into smaller pieces and track which ones need to be updated
 		S: Improve efficiency - move blendmode switch statement outside pixel iteration loop
 ***************************************************************************************************
 	ID: coreDraw000

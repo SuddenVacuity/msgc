@@ -6,11 +6,14 @@ using static EnumList;
 
 public class MainProgram
 {
+    public string version = "v0.0.0.5";
+
     Diagnostics diagnostics = new Diagnostics("MainProgram ", ConsoleColor.Cyan);
-    private EnvironmentData m_environment = new EnvironmentData();
+    public EnvironmentData m_environment = new EnvironmentData();
 
     // default values
-    private BlendMode m_defaultBlendMode = BlendMode.DrawAdd;
+    private BlendMode m_defaultBrushMode = BlendMode.ReplaceClampAlpha;
+    private BlendMode m_defaultBufferMode = BlendMode.Add;
     private Color m_defaultBrushColor = Color.FromArgb(255, 255, 255, 255);
     private Color m_defaultColor = Color.Black;
     private Color m_defaultColorAlt = Color.White;
@@ -26,6 +29,9 @@ public class MainProgram
     private Bitmap m_canvasImage;
     // the image that will be saved to file if saved
     private Bitmap m_finalImage;
+    // where drawing input is stored bfore it's flattened to m_finalImage
+    private Bitmap m_drawBuffer;
+    private BlendMode m_drawBufferMode;
 
     ////////////////////
     // drawing tools
@@ -33,8 +39,6 @@ public class MainProgram
     // the position the mouse was last mousemove update
     private Point m_mousePosPrev;
     private bool m_isDrawing;
-    // where drawing input is stored bfore it's flattened to m_finalImage
-    private Bitmap m_drawBuffer;
     // region where m_drawBuffer has been drawn on
     private Rectangle m_redrawDrawBufferZone;
 
@@ -100,10 +104,12 @@ public class MainProgram
 
         // create draw buffer
         m_drawBuffer = new Bitmap(m_displaySize.Width, m_displaySize.Height, PixelFormat.Format32bppArgb);
+        m_drawBufferMode = m_defaultBufferMode;
 
         Bitmap final = m_layers.flattenImage(
-            m_displaySize, 
-            new Rectangle(new Point(0, 0), m_displaySize), 
+            m_displaySize,
+            new Rectangle(new Point(0, 0), m_displaySize),
+            0, m_layers.getLayerCount(),
             m_finalImage);
 
         if (m_finalImage != null)
@@ -139,17 +145,6 @@ public class MainProgram
         {
             // if file exists load and invert rgb values
             brushImage = new Bitmap(dir);
-            for (int i = 0; i < brushImage.Size.Height; i++)
-                for (int j = 0; j < brushImage.Size.Width; j++)
-                {
-                    Color c = brushImage.GetPixel(j, i);
-                    Color inverted = Color.FromArgb(
-                        c.A,
-                        byte.MaxValue - c.R,
-                        byte.MaxValue - c.G,
-                        byte.MaxValue - c.B);
-                    brushImage.SetPixel(j, i, inverted);
-                }
         }
         else
         {
@@ -187,7 +182,7 @@ public class MainProgram
                     }
                 }
         }
-        m_brush = new Brush(brushImage, m_defaultBlendMode);
+        m_brush = new Brush(brushImage, m_defaultBrushMode);
     }
 
     /// <summary>
@@ -266,7 +261,7 @@ public class MainProgram
         m_isDrawing = false;
         
         diagnostics.restartTimer();
-        m_layers.applyDrawBuffer(m_drawBuffer, m_redrawDrawBufferZone, m_brush.getMode());
+        m_layers.applyDrawBuffer(m_drawBuffer, m_redrawDrawBufferZone, m_drawBufferMode);
         diagnostics.printTimeElapsedAndRestart("APPLY DRAW BUFFER TIME");
 
         updateFinalImage(m_displaySize, m_redrawDrawBufferZone, m_finalImage);
@@ -275,9 +270,62 @@ public class MainProgram
         clearDrawBuffer();
     }
 
-    public void onKeyPress(int windowId, int key)
+    /// <summary>
+    /// Runs when a key is pressed.
+    /// </summary>
+    /// <param name="windowId">The window that recived the  key input</param>
+    /// <param name="key">The Id of the key that was pressed.</param>
+    /// <param name="keyModifiers">Key modifiers. (shift, ctrl, alt, etc)</param>
+    public bool onKeyPress(int windowId, int key, int keyModifiers)
     {
+        // result returns true if the window need to refresh its image
+        bool result = false;
+        Size imageSize = new Size(4000, 4000);
 
+        switch (key)
+        {
+            case 'W':
+                {
+                    m_layers.clearAllLayers();
+                    Bitmap bmp = new Bitmap(imageSize.Width, imageSize.Height, PixelFormat.Format32bppArgb);
+                    Console.Write("\nCreating " + imageSize.Width + "x" + imageSize.Height + " layers with transparent image");
+                    createNewProject(bmp, 3);
+                    result = true;
+                    break;
+                }
+            case 'E':
+                {
+                    m_layers.clearAllLayers();
+                    Bitmap bmp;
+                    Bitmap img = new Bitmap(imageSize.Width, imageSize.Height, PixelFormat.Format32bppArgb);
+                    using (Graphics gr = Graphics.FromImage(img))
+                    {
+                        gr.Clear(Color.FromArgb(100, 255, 255, 255));
+                    }
+                    bmp = img;
+                    Console.Write("\nCreating " + imageSize.Width + "x" + imageSize.Height + "layers with semi-transparent white image");
+                    createNewProject(bmp, 3);
+                    result = true;
+                    break;
+                }
+            case 'R':
+                {
+                    m_layers.clearAllLayers();
+                    Bitmap bmp;
+                    Bitmap img = new Bitmap(imageSize.Width, imageSize.Height, PixelFormat.Format32bppArgb);
+                    using (Graphics gr = Graphics.FromImage(img))
+                    {
+                        gr.Clear(Color.White);
+                    }
+                    bmp = img;
+                    Console.Write("\nCreating " + imageSize.Width + "x" + imageSize.Height + "layers solid white image");
+                    createNewProject(bmp, 3);
+                    result = true;
+                    break;
+                }
+            default: break;
+        }
+        return result;
     }
 
 
@@ -299,6 +347,7 @@ public class MainProgram
     private void drawUI()
     {
         // ouline drawbuffer redraw zone
+        // horizaontal lines
         for (int i = m_redrawDrawBufferZone.X; i < m_redrawDrawBufferZone.X + m_redrawDrawBufferZone.Width; i++)
         {
             int x = i;
@@ -316,6 +365,7 @@ public class MainProgram
             else
                 m_canvasImage.SetPixel(x, top, Color.Black);
         }
+        // vertical lines
         for (int i = m_redrawDrawBufferZone.Y; i < m_redrawDrawBufferZone.Y + m_redrawDrawBufferZone.Height; i++)
         {
             int right = m_redrawDrawBufferZone.X + m_redrawDrawBufferZone.Width - 1;
@@ -326,16 +376,14 @@ public class MainProgram
             if (y < 0 || y >= m_displaySize.Height)
                 continue;
 
-            if (right >= m_displaySize.Width || right < 0) { }
-            else
+            if (!(right >= m_displaySize.Width || right < 0))
                 m_canvasImage.SetPixel(right, y, Color.Black);
-            if (left < 0 || left >= m_displaySize.Width) { }
-            else
+            if (!(left < 0 || left >= m_displaySize.Width))
                 m_canvasImage.SetPixel(left, y, Color.Black);
-
         }
         // END outline drawbuffer redraw zone
         // outline current layer
+        // horizontal lines
         Rectangle rec = m_layers.getCurrentLayerRegion();
         for (int i = 0; i < rec.Width; i++)
         {
@@ -347,18 +395,19 @@ public class MainProgram
             if (x < 0 || x > m_displaySize.Width)
                 continue;
 
+            Color c = Color.Cyan;
+
             // dotted line
             int div = x / 7;
             if (div % 2 == 0)
-                continue;
+                c = Color.Black;
 
-            if (bottom >= m_displaySize.Height || bottom < 0) { }
-            else
-                m_canvasImage.SetPixel(x, bottom, Color.Cyan);
-            if (top < 0 || top >= m_displaySize.Height) { }
-            else
-                m_canvasImage.SetPixel(x, top, Color.Cyan);
+            if (!(bottom >= m_displaySize.Height || bottom < 0))
+                m_canvasImage.SetPixel(x, bottom, c);
+            if (!(top < 0 || top >= m_displaySize.Height))
+                m_canvasImage.SetPixel(x, top, c);
         }
+        // vertical lines
         for (int i = 0; i < rec.Height; i++)
         {
             int y = rec.Y + i;
@@ -368,17 +417,17 @@ public class MainProgram
             if (y < 0 || y > m_displaySize.Height)
                 continue;
 
+            Color c = Color.Cyan;
+
             // dotted line
             int div = y / 7;
             if (div % 2 == 0)
-                continue;
+                c = Color.Black;
 
-            if (right >= m_displaySize.Width || right < 0) { }
-            else
-                m_canvasImage.SetPixel(right, y, Color.Cyan);
-            if (left < 0 || left >= m_displaySize.Width) { }
-            else
-                m_canvasImage.SetPixel(left, y, Color.Cyan);
+            if (!(right >= m_displaySize.Width || right < 0))
+                m_canvasImage.SetPixel(right, y, c);
+            if (!(left < 0 || left >= m_displaySize.Width))
+                m_canvasImage.SetPixel(left, y, c);
         }
         // END outline current layer
     }
@@ -395,6 +444,7 @@ public class MainProgram
         Bitmap brushImage = m_brush.getImage();
         int brushHalfWidth = brushSize.Width / 2;
         int brushHalfHeight = brushSize.Height / 2;
+        BlendMode mode = m_brush.getMode();
 
         expandUpdateArea(mousePosition);
 
@@ -434,9 +484,9 @@ public class MainProgram
                 int g = ip.G;
                 int b = ip.B;
 
-                switch (m_brush.getMode())
+                switch (mode)
                 {
-                    case BlendMode.DrawAdd:
+                    case BlendMode.ReplaceClampAlpha:
                         {
                             if (bp.A == 0)
                                 break;
@@ -449,7 +499,7 @@ public class MainProgram
                             b = dbB;
                             break;
                         }
-                    case BlendMode.DrawMix:
+                    case BlendMode.Mix:
                         { // mix
                             if (bp.A == 0)
                                 break;
@@ -592,7 +642,7 @@ public class MainProgram
     }
 
     /// <summary>
-    /// Flattens all visible layers and sets m_finalImage ot the result.
+    /// Flattens all visible layers and sets m_finalImage and m_canvasImage to the result.
     /// </summary>
     /// <param name="displaySize">The size of the display_canvas in the main window</param>
     /// <param name="redrawZone">The region that has data to be redrawn.</param>
@@ -603,6 +653,7 @@ public class MainProgram
         Bitmap final = m_layers.flattenImage(
             displaySize,
             redrawZone,
+            0, m_layers.getLayerCount(),
             cachedImage);
 
         if (m_finalImage != null)
@@ -614,6 +665,7 @@ public class MainProgram
             m_canvasImage.Dispose();
 
         m_canvasImage = (Bitmap)m_finalImage.Clone();
+
         diagnostics.printTimeElapsedAndRestart("FLATTEN LAYERS TIME");
     }
 
@@ -628,18 +680,19 @@ public class MainProgram
     /// Quick and dirty function to reset the application's image
     /// </summary>
     /// <param name="displaySize"></param>
-    public void createNewProject(Size displaySize)
+    public void createNewProject(Bitmap image, int layerCount)
     {
-        m_displaySize = displaySize;
+        m_displaySize = image.Size;
+        
+        // clear layers
+        m_layers.clearAllLayers();
+
+        // set first layer to default image
+        for(int i = 0; i < layerCount; i++)
+            m_layers.addLayer("Layer " + i, new Point(0, 0), image, 0);
 
         // create blank image
-        Bitmap newImage = new Bitmap(displaySize.Width, displaySize.Height, PixelFormat.Format32bppArgb);
-
-
-        if (m_finalImage != null)
-            m_finalImage.Dispose();
-        if (m_canvasImage != null)
-            m_canvasImage.Dispose();
+        Bitmap newImage = new Bitmap(image.Width, image.Height, PixelFormat.Format32bppArgb);
 
         // set default image to new image
         using (Graphics gr = Graphics.FromImage(newImage))
@@ -648,21 +701,18 @@ public class MainProgram
             gr.Save();
         }
 
+        if (m_finalImage != null)
+            m_finalImage.Dispose();
+        if (m_canvasImage != null)
+            m_canvasImage.Dispose();
+
         // assign image to persisting images
-        m_finalImage = newImage;
+        m_finalImage = (Bitmap)newImage.Clone();
         m_canvasImage = (Bitmap)newImage.Clone();
 
-        // clear layers
-        m_layers.clearAllLayers();
+        drawUI();
 
-        // set first layer to default image
-        Bitmap lbmp = new Bitmap(400, 200, PixelFormat.Format32bppArgb); for (int y = 0; y < lbmp.Height; y++) for (int x = 0; x < lbmp.Width; x++) lbmp.SetPixel(x, y, Color.Red);
-        //m_layers.addLayer("Background", new Point(0, 0), (Bitmap)newImage.Clone(), 0);
-        //m_layers.addLayer("Layer 2", new Point(175, 100), lbmp, 0);
-        //m_layers.addLayer("Layer 3", new Point(0, 0), new Bitmap(displaySize.Width, displaySize.Height, PixelFormat.Format32bppArgb), 0);
-        m_layers.addLayer("Background", new Point(0, 0), new Bitmap(1000, 1000, PixelFormat.Format32bppArgb), 0);
-        m_layers.addLayer("Layer 2", new Point(0, 0), new Bitmap(1000, 1000, PixelFormat.Format32bppArgb), 0);
-        m_layers.addLayer("Layer 3", new Point(0, 0), new Bitmap(1000, 1000, PixelFormat.Format32bppArgb), 0);
+        newImage.Dispose();
     }
 
     /// <summary>
@@ -709,9 +759,10 @@ public class MainProgram
     {
         m_brush.setImage(image);
     }
-    public void setBrushMode(BlendMode mode)
+    public void setBrushMode(BlendMode brushMode, BlendMode bufferMode)
     {
-        m_brush.setMode(mode);
+        m_brush.setMode(brushMode);
+        m_drawBufferMode = bufferMode;
     }
     public Bitmap getFinalImageCopy()
     {

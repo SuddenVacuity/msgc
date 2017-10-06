@@ -9,8 +9,8 @@ public class Brush
 
     public Brush(Bitmap image, BlendMode mode)
     {
-        m_image = image;
         m_mode = mode;
+        setImage(image);
     }
 
     ~Brush()
@@ -25,6 +25,20 @@ public class Brush
             m_image.Dispose();
 
         m_image = image;
+
+        // convert black image to white image
+        for (int i = 0; i < m_image.Size.Height; i++)
+            for (int j = 0; j < m_image.Size.Width; j++)
+            {
+                Color c = m_image.GetPixel(j, i);
+                Color inverted = Color.FromArgb(
+                    c.A,
+                    byte.MaxValue - c.R,
+                    byte.MaxValue - c.G,
+                    byte.MaxValue - c.B);
+                m_image.SetPixel(j, i, inverted);
+            }
+
     }
     public Bitmap getImage()            { return m_image; }
     public void setMode(BlendMode mode) { m_mode = mode; }

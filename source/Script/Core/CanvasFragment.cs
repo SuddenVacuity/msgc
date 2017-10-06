@@ -38,6 +38,10 @@ public class CanvasFragment
         m_y = int.MinValue;
     }
 
+    /// <summary>
+    /// Stores a copy of the image.
+    /// </summary>
+    /// <param name="image"></param>
     public void setImage(Bitmap image)
     {
         if (m_image != null)
@@ -95,6 +99,10 @@ public class CanvasFragment
     public void setPosition(int x, int y) { m_x = x; m_y = y; }
     public Size getSize() { return m_image.Size; }
     public Point getPosition() { return new Point(m_x, m_y); }
+    /// <summary>
+    /// Returns a handle to the stored image.
+    /// </summary>
+    /// <returns></returns>
     public Bitmap getImage() { return m_image; }
 
     public void addFlag(int flag) { m_flags.add(flag); }

@@ -7,9 +7,10 @@ public class EnumList
     {
         None,
         Over,
-        DrawAdd,
-        DrawMix,
+        Add,
+        Mix,
         Replace,
+        ReplaceClampAlpha,
         Erase,
     }
 }

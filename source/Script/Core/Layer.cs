@@ -42,7 +42,15 @@ public class Layer
         m_fragment.resize(size.Width, size.Height, offset);
     }
 
+    /// <summary>
+    /// Stores a copy of the image.
+    /// </summary>
+    /// <param name="image"></param>
     public void setImage(Bitmap image) { m_fragment.setImage(image); }
+    /// <summary>
+    /// Returns a handle to the stored image.
+    /// </summary>
+    /// <returns></returns>
     public Bitmap getImage() { return m_fragment.getImage(); }
     public int getId() { return m_id; }
     public void setId(int id) { m_id = id; }
