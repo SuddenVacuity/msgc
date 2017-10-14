@@ -9,6 +9,19 @@ issue	- id of issue - A known issue that's been logged
 	 and the description of the issue will state what was done)
 	 
 
+v0.0.1.0 - Image Caching and Custom Interface Skin
+	added ui - skinned form/textBox/label/menuStrip/panel/toolStripItem
+	added ui - skinned forms and controls get display values from an easily defined source
+	added ui - custom toolstrip class to overload for skinning
+	added ui - custom colortable for custom toolstrip
+	added ui - expandable layer interface that can select/create/toggleVisible
+	remov ui - temporary layer interface
+	issue core - coreBlend000 - Colors with an alpha value less than 255 create dark edges when they overlay another color
+	issue core -              - Flattening cached image needs optimizing
+	added core - image caching to cap the time it takes to flatten images while drawing
+	added core - now able to apply an image to any layer's image
+
+
 v0.0.0.5 - Improved Image Merging & Test Shortcuts
 	added ui - information about the program
 	added ui - key inputs for testing with different images

@@ -1,14 +1,14 @@
 
 Pre-Commit Checklist
-[x] Check for memory leaks
-[x] Test that features still function correctly
-[x] Update/Add comments
-[x] Remove any overly spammy console output
-[x] Update issue tracker
-[x] Add to version history
-[x] Update application version in AssemblyInfo.cs
+[ ] Check for memory leaks
+[ ] Test that features still function correctly
+[ ] Update/Add comments
+[ ] Remove any overly spammy console output
+[ ] Update issue tracker
+[ ] Add to version history
+[ ] Update application version in AssemblyInfo.cs
 [ ] Update application flow chart (When changes warrant)
-[x] Update application demo (When changes warrant)
+[ ] Update application demo (When changes warrant)
 
 
 -------------------------------------------------------------------

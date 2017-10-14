@@ -14,9 +14,10 @@ using static EnumList;
 
 namespace msgc
 {
-    public partial class FormMain : Form
+    public partial class FormMain : SkinnedWindow
     {
         MainProgram m_program = new MainProgram();
+        bool skinMode = false;
        
         /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         / %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -32,6 +33,7 @@ namespace msgc
             InitializeComponent();
             this.KeyPreview = true;
             this.AllowTransparency = true;
+            this.Padding = new Padding(0);
             display_canvas.Size = new Size(1000, 1000);
 
             m_program.init(display_canvas.Size);
@@ -41,14 +43,6 @@ namespace msgc
             Bitmap displayImage = m_program.getCanvasImageCopy();
             display_canvas.Size = displayImage.Size;
             display_canvas.Image = displayImage;
-
-            // set up color boxes
-            layer_1.BackColor = Color.Transparent;
-            layer_2.BackColor = Color.Transparent;
-            layer_3.BackColor = Color.Black;
-            layer_1_visible.BackColor = Color.Black;
-            layer_2_visible.BackColor = Color.Black;
-            layer_3_visible.BackColor = Color.Black;
 
             Color selectedBrushColor = m_program.getSelectedColor();
             Color selectedBrushColorAlt = m_program.getSelectedColorAlt();
@@ -80,6 +74,49 @@ namespace msgc
 
             runUnitTests();
             display_canvas.Refresh();
+
+            //
+            // layer list
+            for (int i = 0; i < m_program.getLayerCount(); i++)
+            {
+                string s = m_program.getLayerText(i);
+                layerList.AddItem(s);
+            }
+            layerList.LayerItemsChanged += (s, e) =>
+            {
+                int selected = layerList.m_selectedItem;
+
+                if (selected < 0)
+                    return;
+
+                m_program.changeActiveLayer(selected);
+
+                display_canvas.Image = m_program.getCanvasImageCopy();
+                display_canvas.Refresh();
+            };
+            layerList.LayerItemQuickAdd += (s, e) =>
+            {
+                Rectangle rec = m_program.getCurrentLayerRegion();
+                m_program.addLayer(null, rec.Size, rec.Location);
+                LayerList list = s as LayerList;
+                list.AddItem(null);
+            };
+            layerList.LayerItemAdd += (s, e) =>
+            {
+                Console.Write("\n1");
+            };
+            layerList.LayerItemRemove += (s, e) =>
+            {
+                Console.Write("\n2");
+            };
+            layerList.LayerItemButtonVisibilityClick += (s, e) =>
+            {
+                ListItem item = s as ListItem;
+                m_program.toggleLayerVisiblity(item.m_id);
+                updateCanvasImage();
+            };
+            // END layer list
+            //
         }
         
         private void FormMain_Load(object sender, EventArgs e)
@@ -139,14 +176,30 @@ namespace msgc
         // file
         private void newToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // clear all persisting images
-            Bitmap bmp = new Bitmap(700, 700, PixelFormat.Format32bppArgb);
+            int width = 0;
+            int height = 0;
 
-            display_canvas.Size = bmp.Size;
-            display_canvas.Image = bmp;
+            DialogNewProject newProjectMessageBox = new DialogNewProject();
+            DialogResult result = newProjectMessageBox.ShowDialog();
+            if (result == DialogResult.OK)
+            {
+                layerList.clearAll();
 
-            m_program.createNewProject(bmp, 3);
-            updateCanvasImage();
+                width = newProjectMessageBox.m_width;
+                height = newProjectMessageBox.m_height;
+                Bitmap bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+                display_canvas.Size = bmp.Size;
+                display_canvas.Image = bmp;
+                m_program.createNewProject(bmp, 3);
+
+                for (int i = 0; i < m_program.getLayerCount(); i++)
+                {
+                    string s = m_program.getLayerText(i);
+                    layerList.AddItem(s);
+                }
+
+                updateCanvasImage();
+            }
         }
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -178,7 +231,6 @@ namespace msgc
         }
         private void exportToolStripMenuItem_Click(object sender, EventArgs e)
         {
-
         }
         private void printToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -186,6 +238,9 @@ namespace msgc
         }
         private void quitToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            if (m_program.close() == false)
+                return;
+
             Application.Exit();
         }
 
@@ -276,7 +331,44 @@ namespace msgc
         // window
 
         // help
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string version = m_program.u_environment.getApplicationVersion();
+            string owner = m_program.u_environment.getApplicationOwner();
 
+            string name = "About this application";
+            string text =
+                "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" +
+                "\n msgc - " + version +
+                "\n © " + owner + " 2017" +
+                "\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|" +
+                "\n__________________________________________________________________________________";
+
+            DialogMessage messageBox = new DialogMessage(name, text, 500, 300);
+            messageBox.ShowDialog();
+        }
+
+        private void controlsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string name = "Controls";
+            string text =
+                "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" +
+                "\nDebug shortcuts:\n" +
+                "\nKeys:" +
+                "\n   W - New a project with 3 4000x4000 transparent images" +
+                "\n   E - New a project with 3 4000x4000 semi-transparent images" +
+                "\n   R - New a project with 3 4000x4000 solid white image" +
+                "\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|" +
+                "\n__________________________________________________________________________________";
+
+            DialogMessage messageBox = new DialogMessage(name, text, 500, 300);
+            messageBox.ShowDialog();
+        }
+        private void testDialogToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogTestSkin window = new DialogTestSkin();
+            window.ShowDialog();
+        }
 
 
         /////////////////////////////////////
@@ -533,7 +625,7 @@ namespace msgc
             for (int i = 0; i < brushImage.Size.Height; i++)
                 for (int j = 0; j < brushImage.Size.Width; j++)
                 {
-                    brushImage.SetPixel(j, i, Color.White);
+                    brushImage.SetPixel(j, i, Color.Black);
                 }
             m_program.setBrushImage(brushImage);
         }
@@ -544,7 +636,8 @@ namespace msgc
             button_square_brush.BackColor = Color.Transparent;
 
             Bitmap brushImage;
-            string dir = m_program.m_environment.getBrushDirectory() + @"//standard_round.png";
+            string dir = m_program.u_environment.getBrushDirectory();
+            dir = dir + @"//standard_round.png";
             if (System.IO.File.Exists(dir))
             {
                 brushImage = new Bitmap(dir);
@@ -568,73 +661,7 @@ namespace msgc
             }
             m_program.setBrushImage(brushImage);
         }
-
-        private void layer_1_Click(object sender, EventArgs e)
-        {
-            m_program.changeActiveLayer(0);
-            layer_1.BackColor = Color.Black;
-            layer_2.BackColor = Color.Transparent;
-            layer_3.BackColor = Color.Transparent;
-
-            updateCanvasImage();
-        }
-
-        private void layer_2_Click(object sender, EventArgs e)
-        {
-            m_program.changeActiveLayer(1);
-            layer_1.BackColor = Color.Transparent;
-            layer_2.BackColor = Color.Black;
-            layer_3.BackColor = Color.Transparent;
-
-            updateCanvasImage();
-        }
-
-        private void layer_3_Click(object sender, EventArgs e)
-        {
-            m_program.changeActiveLayer(2);
-            layer_1.BackColor = Color.Transparent;
-            layer_2.BackColor = Color.Transparent;
-            layer_3.BackColor = Color.Black;
-
-            updateCanvasImage();
-        }
-
-        private void layer_1_visible_Click(object sender, EventArgs e)
-        {
-            PictureBox box = layer_1_visible;
-
-            if (m_program.toggleLayerVisiblity(0))
-                box.BackColor = Color.Black;
-            else
-                box.BackColor = Color.Transparent;
-
-            updateCanvasImage();
-        }
-
-        private void layer_2_visible_Click(object sender, EventArgs e)
-        {
-            PictureBox box = layer_2_visible;
-
-            if (m_program.toggleLayerVisiblity(1))
-                box.BackColor = Color.Black;
-            else
-                box.BackColor = Color.Transparent;
-
-            updateCanvasImage();
-        }
-
-        private void layer_3_visible_Click(object sender, EventArgs e)
-        {
-            PictureBox box = layer_3_visible;
-
-            if (m_program.toggleLayerVisiblity(2))
-                box.BackColor = Color.Black;
-            else
-                box.BackColor = Color.Transparent;
-
-            updateCanvasImage();
-        }
-
+        
         private void runUnitTests()
         {
 
@@ -664,97 +691,22 @@ namespace msgc
 
         }
 
-        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        private void newLayerToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Form aboutMessageBox = new Form();
-            aboutMessageBox.ShowInTaskbar = false;
-            aboutMessageBox.Width = 500;
-            aboutMessageBox.Height = 300;
-            aboutMessageBox.Text = "About this application";
-            aboutMessageBox.StartPosition = FormStartPosition.CenterScreen;
-            aboutMessageBox.FormBorderStyle = FormBorderStyle.FixedDialog;
-            aboutMessageBox.MaximizeBox = false;
-            aboutMessageBox.MinimizeBox = false;
-
-            Label name = new Label();
-            name.Font = new Font(name.Font.Name, 16, FontStyle.Bold);
-            name.Left = 50;
-            name.Top = 20;
-            name.Width = 300;
-            name.Height = 30;
-            name.Text = "msgc - " + m_program.version;
-
-            Label aboutText = new Label();
-            aboutText.Left = 50;
-            aboutText.Top = 45;
-            aboutText.Width = 400;
-            aboutText.Height = 130;
-            aboutText.Text = "\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|";
-
-            Label copyright = new Label();
-            copyright.Left = 50;
-            copyright.Top = 195;
-            copyright.Width = 200;
-            copyright.Text = "© Gerald Coggins 2017";
-
-            Button confirmButton = new Button();
-            confirmButton.Left = 200;
-            confirmButton.Width = 100;
-            confirmButton.Top = 220;
-            confirmButton.Text = "Close";
-            confirmButton.Click += (vvv, bbb) =>
+            DialogNewLayer newLayerMessageBox = new DialogNewLayer();
+            DialogResult result = newLayerMessageBox.ShowDialog();
+            if (result == DialogResult.OK)
             {
-                aboutMessageBox.Close();
-            };
+                string name = newLayerMessageBox.m_name;
+                
+                Size size = new Size(
+                    newLayerMessageBox.m_width,
+                    newLayerMessageBox.m_height);
 
-            aboutMessageBox.Controls.Add(name);
-            aboutMessageBox.Controls.Add(aboutText);
-            aboutMessageBox.Controls.Add(copyright);
-            aboutMessageBox.Controls.Add(confirmButton);
+                m_program.addLayer(name, size, new Point(0, 0));
+                updateCanvasImage();
+            }
 
-            aboutMessageBox.ShowDialog();
-        }
-
-        private void controlsToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Form controlsMessageBox = new Form();
-            controlsMessageBox.ShowInTaskbar = false;
-            controlsMessageBox.Width = 500;
-            controlsMessageBox.Height = 300;
-            controlsMessageBox.Text = "Controls";
-            controlsMessageBox.StartPosition = FormStartPosition.CenterScreen;
-            controlsMessageBox.FormBorderStyle = FormBorderStyle.FixedDialog;
-            controlsMessageBox.MaximizeBox = false;
-            controlsMessageBox.MinimizeBox = false;
-
-            Label controlsText = new Label();
-            controlsText.Font = new Font(FontFamily.GenericMonospace, controlsText.Font.Size, controlsText.Font.Style);
-            controlsText.Left = 10;
-            controlsText.Top = 10;
-            controlsText.Width = 475;
-            controlsText.Height = 195;
-            controlsText.Text =
-                "Debug shortcuts:\n" +
-                "\nKeys:" +
-                "\n   W - New a project with 3 4000x4000 transparent images" +
-                "\n   E - New a project with 3 4000x4000 semi-transparent images" +
-                "\n   R - New a project with 3 4000x4000 solid white image" +
-                "\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|";
-
-            Button confirmButton = new Button();
-            confirmButton.Left = 200;
-            confirmButton.Width = 100;
-            confirmButton.Top = 220;
-            confirmButton.Text = "Close";
-            confirmButton.Click += (vvv, bbb) =>
-            {
-                controlsMessageBox.Close();
-            };
-            
-            controlsMessageBox.Controls.Add(controlsText);
-            controlsMessageBox.Controls.Add(confirmButton);
-
-            controlsMessageBox.ShowDialog();
         }
     }
 }

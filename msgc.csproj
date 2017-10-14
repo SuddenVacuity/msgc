@@ -12,6 +12,7 @@
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -24,7 +25,6 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>1</ApplicationRevision>
     <ApplicationVersion>0.0.0.1</ApplicationVersion>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
@@ -72,6 +72,58 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="source\Interface\Windows\WinForms\Controls\LayerList.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\Controls\ListItem.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\Controls\TextBoxMarked.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\Controls\TextBoxNumberMarked.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\Dialogs\DialogMessage.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\Dialogs\DialogNewLayer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\Dialogs\DialogNewProject.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\Dialogs\DialogTestSkin.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\SkinnedWrappers\Renderers\CustomColorTable.cs" />
+    <Compile Include="source\Interface\Windows\WinForms\SkinnedWrappers\Renderers\CustomToolStripRenderer..cs" />
+    <Compile Include="source\Interface\Windows\WinForms\SkinnedWrappers\SkinnedButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\SkinnedWrappers\SkinnedLabel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\SkinnedWrappers\SkinnedListView.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\SkinnedWrappers\SkinnedListViewItem.cs" />
+    <Compile Include="source\Interface\Windows\WinForms\SkinnedWrappers\SkinnedMenuStrip.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\SkinnedWrappers\SkinnedPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\SkinnedWrappers\SkinnedTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\SkinnedWrappers\SkinnedToolStripItem.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\SkinnedWrappers\SkinnedWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="source\Interface\Windows\WinForms\Theme\InterfaceSkin.cs" />
     <Compile Include="source\Script\EnvironmentData.cs" />
     <Compile Include="source\Script\Core\Brush.cs" />
     <Compile Include="source\Script\Core\CanvasFragment.cs" />

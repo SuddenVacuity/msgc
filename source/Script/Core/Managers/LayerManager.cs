@@ -25,21 +25,20 @@ public class LayerManager
     }
 
     /// <summary>
-    /// Creates a layer from the name, position and a copy of image and adds it to the layer manager. 
+    /// Returns true if layer was sucessfully added. Creates a layer from the name, position and a copy of image and adds it to the layer manager. 
     /// </summary>
     /// <param name="name">The name of the layer</param>
     /// <param name="position">The position of the image relative to the final image</param>
     /// <param name="image">The image this layer will contain a copy of</param>
     /// <param name="flags">Extra data about the layer</param>
-    public void addLayer(string name, Point position, Bitmap image, int flags = 0)
+    public bool addLayer(string name, Rectangle region, Bitmap image, int flags = 0)
     {
         if (m_layerCurrent == m_maxLayers)
-            return;
+            return false;
 
         CanvasFragment fragment = new CanvasFragment(
                 image,
-                position.X,
-                position.Y);
+                region);
 
         m_layers[m_layerCount] = new Layer(
             m_layerCount, 
@@ -51,6 +50,7 @@ public class LayerManager
         m_layerCount++;
 
         updateTotalSize();
+        return true;
     }
 
     /// <summary>
@@ -66,17 +66,18 @@ public class LayerManager
     }
 
     /// <summary>
-    /// Applies the drawbuffer image to the current layer.
+    /// Overlays the specified layer's image with the input image.
     /// </summary>
-    /// <param name="drawBuffer">The draw buffer image</param>
+    /// <param name="layerId">the id of the layer to apply the image to</param>
+    /// <param name="image">The image to apply</param>
     /// <param name="updateRegion">The region that needs to be redrawn.</param>
     /// <param name="mode">The blendmode used to apply the image.</param>
-    public void applyDrawBuffer(Bitmap drawBuffer, Rectangle updateRegion, BlendMode mode)
+    public void applyImageOnLayer(int layerId, Bitmap image, Rectangle updateRegion, BlendMode mode)
     {
-        Layer layer = m_layers[m_layerCurrent];
+        Layer layer = m_layers[layerId];
 
         // create region relative to the image to update
-        Rectangle imageRegion = layer.getRectangle();
+        Rectangle imageRegion = layer.getLayerRegion();
 
         // return if there's nothing to update
         if (!updateRegion.IntersectsWith(imageRegion))
@@ -108,7 +109,7 @@ public class LayerManager
             m.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
             m.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
             m.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-            m.DrawImage(drawBuffer,
+            m.DrawImage(image,
                 new Rectangle(0, 0, redrawRegion.Width, redrawRegion.Height),
                 redrawRegion,
                 GraphicsUnit.Pixel);
@@ -129,15 +130,18 @@ public class LayerManager
     }
     
     /// <summary>
-    /// Flattens drawbuffer to current layer and applies the changes to cached image.
+    /// Flattens drawbuffer to current layer and applies the changes to cached image. Runs Dispose() on cachedImage.
     /// </summary>
     /// <param name="displaySize">The size of the display region in the application</param>
     /// <param name="updateRegion">The region within the final image that will be changed</param>
-    /// <param name="cachedImage">The previous final image</param>
+    /// <param name="cachedImage">The previous final image - gets Bitmap.Dispose()</param>
     /// <returns></returns>
     public Bitmap flattenImage(Size displaySize, Rectangle updateRegion, int startPos, int endPos, Bitmap cachedImage)
     {
         diagnostics.restartTimer();
+
+        if (updateRegion.Width <= 0 || updateRegion.Height <= 0)
+            return null;
 
         if (startPos < 0)
             startPos = 0;
@@ -182,10 +186,13 @@ public class LayerManager
                 continue;
 
             // create region relative to the image to update
-            Rectangle imageRegion = layer.getRectangle();
+            Rectangle imageRegion = layer.getLayerRegion();
 
             // get a handle on the layers image
             Bitmap layerImage = layer.getImage();
+
+            if (layerImage == null)
+                continue;
 
             // reduce the size of the redraw zone to only include area the layer's image covers
             Rectangle redrawRegion = Rectangle.Intersect(updateRegion, imageRegion);
@@ -298,7 +305,8 @@ public class LayerManager
     /// <returns></returns>
     public bool toggleLayerIsVisible(int position)
     {
-        if (position > m_layerCount)
+        if (position > m_layerCount ||
+            position < 0)
             return false;
 
         bool iv = m_layers[position].getIsVisible();
@@ -363,7 +371,37 @@ public class LayerManager
         if (position > m_layerCount)
             return new Rectangle(0, 0, 0, 0);
 
-        return m_layers[position].getRectangle();
+        return m_layers[position].getLayerRegion();
+    }
+
+    /// <summary>
+    /// Returns a rectangle that represents the poistion and size of a specified range of layers.
+    /// </summary>
+    /// <param name="startPos">The id of the layer at the start of the range</param>
+    /// <param name="endPos">The id of the layer to that the range ends at</param>
+    /// <returns></returns>
+    public Rectangle getLayerRegion(int startPos, int endPos)
+    {
+        Rectangle result = new Rectangle(0, 0, 0, 0);
+        if (startPos < 0 || endPos > m_layerCount)
+            return result;
+
+        for (int i = startPos; i < endPos; i++)
+        {
+            Rectangle rec = m_layers[i].getLayerRegion();
+
+            if (rec.X < result.X)
+                result.X = rec.X;
+            if (rec.Y < result.Y)
+                result.Y = rec.Y;
+            
+            if (rec.X + rec.Width > result.X + result.Width)
+                result.Width = (rec.X + rec.Width) - result.X;
+            if (rec.Y + rec.Height > result.Y + result.Height)
+                result.Height = (rec.Y + rec.Height) - result.Y;
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -376,7 +414,7 @@ public class LayerManager
         Point end = new Point(0, 0);
         for (int i = 0; i < m_layerCount; i++)
         {
-            Rectangle r = m_layers[i].getRectangle();
+            Rectangle r = m_layers[i].getLayerRegion();
 
             if (r.X < start.X)
                 start.X = r.X;
@@ -408,7 +446,7 @@ public class LayerManager
     /// <returns></returns>
     public Rectangle getCurrentLayerRegion()
     {
-        return m_layers[m_layerCurrent].getRectangle();
+        return m_layers[m_layerCurrent].getLayerRegion();
     }
 
     /// <summary>
@@ -418,6 +456,10 @@ public class LayerManager
     /// <returns></returns>
     public Bitmap getLayerImage(int layerId)
     {
+        if (layerId < 0 ||
+            layerId >= m_layerCount)
+            return null;
+
         return m_layers[layerId].getImage();
     }
 
@@ -429,5 +471,40 @@ public class LayerManager
     public void setLayerImage(int layerId, Bitmap image)
     {
         m_layers[layerId].setImage(image);
+    }
+    /// <summary>
+    /// Stores a copy of the image in the specified layer.
+    /// </summary>
+    /// <param name="layerId"></param>
+    /// <param name="image"></param>
+    /// <param name="offset"></param>
+    public void setLayerImage(int layerId, Bitmap image, Rectangle region)
+    {
+        m_layers[layerId].setImage(image);
+        m_layers[layerId].setRegion(region);
+    }
+
+    public void debugSaveLayerImagesToFile(string message, int startPos, int endPos)
+    {
+        if (startPos < 0)
+            startPos = 0;
+        if (endPos > m_layerCount)
+            endPos = m_layerCount;
+
+        for (int i = startPos; i < endPos; i++)
+        {
+            Bitmap bmp = m_layers[i].getImage();
+
+            if (bmp != null)
+                bmp.Save("LayerManager_" + message + "_" + i + "_" + m_layers[i].getName() + ".png");
+        }
+    }
+
+    public string getName(int position)
+    {
+        if (position >= m_layerCount)
+            return null;
+
+        return m_layers[position].getName();
     }
 }

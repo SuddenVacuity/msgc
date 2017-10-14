@@ -7,14 +7,12 @@ public class CanvasFragment
     private BitField m_flags = new BitField();
     private Bitmap m_image = null;
 
-    // distance from left side and top
-    private int m_x = int.MinValue;
-    private int m_y = int.MinValue;
+    private Rectangle m_region = new Rectangle(int.MinValue, int.MinValue, int.MinValue, int.MinValue);
 
-    public CanvasFragment(Bitmap image, int x, int y, int flags = 0)
+    public CanvasFragment(Bitmap image, Rectangle region, int flags = 0)
     {
         m_flags.set(flags);
-        setPosition(x, y);
+        setRegion(region);
         setImage(image);
     }
     public CanvasFragment(Bitmap image, int flags = 0)
@@ -32,10 +30,14 @@ public class CanvasFragment
     public void clear()
     {
         m_flags = new BitField();
+
         if (m_image != null)
             m_image.Dispose();
-        m_x = int.MinValue;
-        m_y = int.MinValue;
+
+        m_region.X = int.MinValue;
+        m_region.Y = int.MinValue;
+        m_region.Width = int.MinValue;
+        m_region.Height = int.MinValue;
     }
 
     /// <summary>
@@ -47,16 +49,28 @@ public class CanvasFragment
         if (m_image != null)
             m_image.Dispose();
 
-        if (image != null)
+        // this keeps getting argument exception on .Clone()
+        //if (image != null)
+        //    m_image = (Bitmap)image.Clone();
+
+        try
+        {
             m_image = (Bitmap)image.Clone();
+            m_region = new Rectangle(m_region.Location, m_image.Size);
+        }
+        catch
+        {
+            m_flags = null;
+            m_region = new Rectangle(m_region.X, m_region.Y, 0, 0);
+        }
     }
     public Color getPixel(int x, int y)
     {
         if (m_image == null)
             return Color.Transparent;
 
-        int posX = x - m_x;
-        int posY = y - m_y;
+        int posX = x - m_region.X;
+        int posY = y - m_region.Y;
 
         if (posX < 0 || posY < 0)
             return Color.FromArgb(0, 0, 0, 0);
@@ -70,8 +84,8 @@ public class CanvasFragment
         if (m_image == null)
             return;
 
-        int posX = x - m_x;
-        int posY = y - m_y;
+        int posX = x - m_region.X;
+        int posY = y - m_region.Y;
 
         if (posX < 0 || posY < 0)
             return;
@@ -80,25 +94,18 @@ public class CanvasFragment
 
         m_image.SetPixel(posX, posY, color);
     }
-    public void resize(int width, int height, Point imageOffset)
+
+    public void setRegion(Rectangle region) { m_region = region; }
+
+    public Size getSize()
     {
-        if (m_image == null)
-            return;
-
-        Bitmap old = m_image;
-        m_image = new Bitmap(width, height, PixelFormat.Format32bppArgb);
-
-        using (Graphics gr = Graphics.FromImage(m_image))
-        {
-            gr.DrawImageUnscaled(old, imageOffset);
-            gr.Save();
-        }
-        old.Dispose();
+        if (m_image != null)
+            return m_image.Size;
+        else
+            return new Size(0, 0);
     }
 
-    public void setPosition(int x, int y) { m_x = x; m_y = y; }
-    public Size getSize() { return m_image.Size; }
-    public Point getPosition() { return new Point(m_x, m_y); }
+    public Rectangle getRegion() { return m_region; }
     /// <summary>
     /// Returns a handle to the stored image.
     /// </summary>

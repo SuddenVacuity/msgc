@@ -28,20 +28,6 @@ public class Layer
         m_fragment.clear();
     }
 
-    public void resizeImage(Point location, Size size)
-    {
-        Point currentLocation = m_fragment.getPosition();
-        Point offset = new Point(0, 0);
-
-        if (location.X < currentLocation.X)
-            offset.X = currentLocation.X - location.X;
-        if (location.Y < currentLocation.Y)
-            offset.Y = currentLocation.Y - location.Y;
-
-        m_fragment.setPosition(location.X, location.Y);
-        m_fragment.resize(size.Width, size.Height, offset);
-    }
-
     /// <summary>
     /// Stores a copy of the image.
     /// </summary>
@@ -60,11 +46,12 @@ public class Layer
     public Color getPixel(Point point) { return m_fragment.getPixel(point.X, point.Y); }
     public void setPixel(int x, int y, Color color) { m_fragment.setPixel(x, y, color); }
     public void setPixel(Point point, Color color) { m_fragment.setPixel(point.X, point.Y, color); }
-    public Point getImagePosition() { return m_fragment.getPosition(); }
+    public Rectangle getLayerRegion() { return m_fragment.getRegion(); }
     public Size getImageSize() { return m_fragment.getSize(); }
-    public Rectangle getRectangle() { return new Rectangle(m_fragment.getPosition(), m_fragment.getSize()); }
 
     public void addFlag(int flag) { m_flags.add(flag); }
     public void removeFlag(int flag) { m_flags.remove(flag); }
     public bool hasFlag(int flag) { return m_flags.has(flag); }
+    public string getName() { return m_name; }
+    public void setRegion(Rectangle region) { m_fragment.setRegion(region); }
 }

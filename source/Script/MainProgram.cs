@@ -6,10 +6,8 @@ using static EnumList;
 
 public class MainProgram
 {
-    public string version = "v0.0.0.5";
-
     Diagnostics diagnostics = new Diagnostics("MainProgram ", ConsoleColor.Cyan);
-    public EnvironmentData m_environment = new EnvironmentData();
+    public EnvironmentData u_environment;
 
     // default values
     private BlendMode m_defaultBrushMode = BlendMode.ReplaceClampAlpha;
@@ -19,18 +17,15 @@ public class MainProgram
     private Color m_defaultColorAlt = Color.White;
     private string m_defaultCanvasImage = @"//colorTest.png";
     private string m_defaultBrush = @"//standard_round.png";
-
-
+    
     ////////////////////
     // layer tools
     ////////////////////
+    // holds all image data to be stacked into the final image
     LayerManager m_layers;
-    // the image used to store a flattened image that's shown in display_canvas
-    private Bitmap m_canvasImage;
-    // the image that will be saved to file if saved
-    private Bitmap m_finalImage;
+    // holds precombined ranges of m_layers to limit max layers to merge when drawing
+    LayerManager m_imageCache;
     // where drawing input is stored bfore it's flattened to m_finalImage
-    private Bitmap m_drawBuffer;
     private BlendMode m_drawBufferMode;
 
     ////////////////////
@@ -55,7 +50,10 @@ public class MainProgram
     public void init(Size displayImageRegion)
     {
         diagnostics.setActive(true);
-        m_environment.init();
+
+        u_environment = new EnvironmentData();
+
+        diagnostics.printToConsole("INITIALIZE START");
 
         //////////////////////////////////////
         //////////////////////////////////////
@@ -66,13 +64,14 @@ public class MainProgram
         //////////////////////////////////////
 
         // create layer manager
-        m_layers = new LayerManager();
+        m_layers = new LayerManager(255);
+        m_imageCache = new LayerManager((int)ImageCacheId.Count);
 
         m_displaySize = displayImageRegion;
 
         // load default base image
         Bitmap baseImage;
-        string dir = m_environment.getImageDirectory() + m_defaultCanvasImage;
+        string dir = u_environment.getImageDirectory() + m_defaultCanvasImage;
         if (System.IO.File.Exists(dir))
         {
             baseImage = new Bitmap(dir);
@@ -88,39 +87,26 @@ public class MainProgram
             baseImage = img;
         }
 
-        // create redraw zone
-        m_redrawDrawBufferZone = new Rectangle(0, 0, 0, 0);
-        
+        diagnostics.restartTimer();
+
         // load layers
         Bitmap lbmp = new Bitmap(400, 200, PixelFormat.Format32bppArgb); for (int y = 0; y < lbmp.Height; y++) for (int x = 0; x < lbmp.Width; x++) lbmp.SetPixel(x, y, Color.Red);
-        m_layers.addLayer("Background", new Point(0, 0), (Bitmap)baseImage.Clone(), 0);
-        m_layers.addLayer("Layer 2", new Point(175, 100), lbmp, 0);
-        m_layers.addLayer("Layer 3", new Point(0, 0), new Bitmap(1000, 1000, PixelFormat.Format32bppArgb), 0);
+        Bitmap bbmp = new Bitmap(baseImage.Size.Width, baseImage.Size.Height, PixelFormat.Format32bppArgb);
+        m_layers.addLayer("Background", new Rectangle(new Point(0, 0), baseImage.Size), baseImage, 0);
+        m_layers.addLayer("Layer 2", new Rectangle(new Point(175, 100), lbmp.Size), lbmp, 0);
+        m_layers.addLayer("Layer 3", new Rectangle(new Point(0, 0), bbmp.Size), bbmp, 0);
 
-        // set display size
-        m_displaySize = m_layers.getTotalSize();
-        
-        m_finalImage = new Bitmap(m_displaySize.Width, m_displaySize.Height, PixelFormat.Format32bppArgb);
+        baseImage.Dispose();
+        lbmp.Dispose();
+        bbmp.Dispose();
 
-        // create draw buffer
-        m_drawBuffer = new Bitmap(m_displaySize.Width, m_displaySize.Height, PixelFormat.Format32bppArgb);
+        diagnostics.printTimeElapsedAndRestart("ADD LAYERS TIME");
+
+        // create redraw zone
+        m_redrawDrawBufferZone = new Rectangle(0, 0, 0, 0);
         m_drawBufferMode = m_defaultBufferMode;
-
-        Bitmap final = m_layers.flattenImage(
-            m_displaySize,
-            new Rectangle(new Point(0, 0), m_displaySize),
-            0, m_layers.getLayerCount(),
-            m_finalImage);
-
-        if (m_finalImage != null)
-            m_finalImage.Dispose();
-
-        m_finalImage = final;
-
-        if (m_canvasImage != null)
-            m_canvasImage.Dispose();
-
-        m_canvasImage = (Bitmap)m_finalImage.Clone();
+        createImageCache();
+        
         drawUI();
 
         //////////////////////////////////////
@@ -130,7 +116,9 @@ public class MainProgram
         //                                  //
         //////////////////////////////////////
         //////////////////////////////////////
-        
+
+        diagnostics.restartTimer();
+
         // set default program state
         m_isDrawing = false;
 
@@ -139,7 +127,7 @@ public class MainProgram
         m_colorAlt = m_defaultColorAlt;
 
         // load default brush image
-        dir = m_environment.getBrushDirectory() + m_defaultBrush;
+        dir = u_environment.getBrushDirectory() + m_defaultBrush;
         Bitmap brushImage;
         if (System.IO.File.Exists(dir))
         {
@@ -183,6 +171,7 @@ public class MainProgram
                 }
         }
         m_brush = new Brush(brushImage, m_defaultBrushMode);
+        diagnostics.printTimeElapsedAndRestart("LOAD BRUSHES TIME");
     }
 
     /// <summary>
@@ -198,7 +187,7 @@ public class MainProgram
     public void onMouseDown(int windowId, Point cursorPosition)
     {
         m_isDrawing = true;
-        
+
         // store current mouse position
         m_mousePosPrev = cursorPosition;
 
@@ -214,7 +203,8 @@ public class MainProgram
 
         // draw to buffer
         drawToBuffer(cursorPosition);
-        applyDrawBufferToCanvasImage();
+
+        applyDrawBufferToImageCache();
 
         // draw UI feedback
         drawUI();
@@ -238,7 +228,8 @@ public class MainProgram
         Point mousePos = cursorPosition;
 
         drawToBuffer(mousePos);
-        applyDrawBufferToCanvasImage();
+
+        applyDrawBufferToImageCache();
 
         drawUI();
         m_mousePosPrev = mousePos;
@@ -259,15 +250,30 @@ public class MainProgram
             return;
 
         m_isDrawing = false;
+
+
+        Bitmap buffer = m_imageCache.getLayerImage((int)ImageCacheId.DrawBuffer);
+        if (buffer != null)
+        {
+            diagnostics.printToConsole("APPLYING DRAW BUFFER");
+            diagnostics.restartTimer();
+
+            m_layers.applyImageOnLayer(
+                m_layers.getActiveLayer(),
+                buffer,
+                m_redrawDrawBufferZone,
+                m_drawBufferMode);
+
+            diagnostics.printTimeElapsedAndRestart("APPLY DRAW BUFFER TIME");
+        }
+
+        updateImageCache(m_redrawDrawBufferZone);
         
-        diagnostics.restartTimer();
-        m_layers.applyDrawBuffer(m_drawBuffer, m_redrawDrawBufferZone, m_drawBufferMode);
-        diagnostics.printTimeElapsedAndRestart("APPLY DRAW BUFFER TIME");
-
-        updateFinalImage(m_displaySize, m_redrawDrawBufferZone, m_finalImage);
-
         drawUI();
         clearDrawBuffer();
+
+        //m_layers.debugSaveLayerImagesToFile("m_layers", 0, m_layers.getLayerCount());
+        //m_imageCache.debugSaveLayerImagesToFile("m_imageCache", 0, m_imageCache.getLayerCount());
     }
 
     /// <summary>
@@ -328,10 +334,14 @@ public class MainProgram
         return result;
     }
 
-
-    public void close()
+    /// <summary>
+    /// Returns true if the program should be allowed to close.
+    /// </summary>
+    /// <returns></returns>
+    public bool close()
     {
-
+        // do stuff before closing here
+        return true;
     }
 
 
@@ -340,14 +350,158 @@ public class MainProgram
     //     Program Functions
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
-    
+
+    /// <summary>
+    /// Initializes the image caches. 
+    /// Requires m_layers to contain layers with images.
+    /// </summary>
+    private void createImageCache()
+    {
+        diagnostics.printToConsole("CREATING IMAGE CACHE");
+        diagnostics.restartTimer();
+
+        // use total size of all layers for each cache image for now
+        m_displaySize = m_layers.getTotalSize();
+
+        // the size the final and canvas image caches will be
+        Size imageSize = m_displaySize;
+
+        int activeLayerId = m_layers.getActiveLayer();
+        int layerCount = m_layers.getLayerCount();
+
+        // flatten images all image under the current layer
+        Rectangle backgroundRegion = m_layers.getLayerRegion(0, activeLayerId);
+        Bitmap background = m_imageCache.getLayerImage((int)ImageCacheId.Background);
+        if (backgroundRegion.Width > 0 && backgroundRegion.Height > 0)
+            background = m_layers.flattenImage(
+            m_displaySize,
+            new Rectangle(new Point(0, 0), backgroundRegion.Size),
+            0, activeLayerId,
+            new Bitmap(backgroundRegion.Width, backgroundRegion.Height, PixelFormat.Format32bppArgb));
+
+        // get the current layer image
+        // Bitmap currentLayer is a handle to the current layer image in m_layers, do not dispose
+        Bitmap currentLayer = null;
+        Rectangle currentRegion = m_layers.getLayerRegion(activeLayerId);
+        if (m_layers.getLayerIsVisible(activeLayerId))
+            currentLayer = m_layers.getLayerImage(activeLayerId);
+
+        // create a drawbuffer
+        Bitmap drawBuffer = new Bitmap(m_displaySize.Width, m_displaySize.Height, PixelFormat.Format32bppArgb);
+
+        // flatten all images after the current layer
+        Rectangle foregroundRegion = m_layers.getLayerRegion(activeLayerId + 1, layerCount);
+        Bitmap foreground = m_imageCache.getLayerImage((int)ImageCacheId.Foreground);
+        if (foregroundRegion.Width > 0 && foregroundRegion.Height > 0)
+            foreground = m_layers.flattenImage(
+            m_displaySize,
+            new Rectangle(new Point(0, 0), foregroundRegion.Size),
+            activeLayerId + 1, layerCount,
+            new Bitmap(foregroundRegion.Width, foregroundRegion.Height, PixelFormat.Format32bppArgb));
+        
+        // clear any existing cached images
+        m_imageCache.clearAllLayers();
+
+        // add the flattened images, the drawbuffer and the current image
+        m_imageCache.addLayer("Background", backgroundRegion, background);
+        m_imageCache.addLayer("CurrentLayer", currentRegion, currentLayer);
+        m_imageCache.addLayer("Foreground", foregroundRegion, foreground);
+        m_imageCache.addLayer("DrawBuffer", new Rectangle(new Point(0, 0), m_displaySize), drawBuffer);
+
+        if (background != null)
+            background.Dispose();
+        if (drawBuffer != null)
+            drawBuffer.Dispose();
+        if (foreground != null)
+            foreground.Dispose();
+
+        // flatten cached images into a single image
+        Rectangle finalRegion = m_imageCache.getLayerRegion(0, (int)ImageCacheId.Foreground + 1);
+        Bitmap final = m_imageCache.flattenImage(
+            m_displaySize,
+            finalRegion,
+            0, (int)ImageCacheId.Foreground + 1,
+            new Bitmap(imageSize.Width, imageSize.Height, PixelFormat.Format32bppArgb));
+
+        // add the flattened cached images to the cache
+        m_imageCache.addLayer("CanvasImage", finalRegion, final);
+        m_imageCache.addLayer("FinalImage", finalRegion, final);
+
+        if (final != null)
+            final.Dispose();
+
+        diagnostics.printTimeElapsedAndRestart("CREATE IMAGE CACHE TIME");
+
+        //m_layers.debugSaveLayerImagesToFile("m_layers", 0, m_layers.getLayerCount());
+        //m_imageCache.debugSaveLayerImagesToFile("m_imageCache", 0, m_imageCache.getLayerCount());
+    }
+
+    /// <summary>
+    /// Sets the current layer image cache to the stored m_layers image for the current layer. 
+    /// Flattens m_imageCache and sets copies of the result to final and canvas image caches.
+    /// </summary>
+    /// <param name="redrawRegion">The region that will be updated</param>
+    private void updateImageCache(Rectangle redrawRegion)
+    {
+        diagnostics.printToConsole("UPDATING IMAGE CACHE");
+        // set display size
+        m_displaySize = m_layers.getTotalSize();
+
+        // get the current layer and the layer count from project layers
+        int activeLayerId = m_layers.getActiveLayer();
+        int layerCount = m_layers.getLayerCount();
+
+        // get handles to image cache images
+        Bitmap currentLayerBmp = m_imageCache.getLayerImage((int)ImageCacheId.CurrentLayer);
+        Bitmap finalImageBmp   = m_imageCache.getLayerImage((int)ImageCacheId.FinalImage);
+        
+        if (finalImageBmp != null)
+            finalImageBmp = (Bitmap)m_imageCache.getLayerImage((int)ImageCacheId.FinalImage).Clone();
+        
+        // get current layer region
+        Rectangle region = m_layers.getLayerRegion(activeLayerId);
+
+        // reset the currentLayer cache image to the m_layer stored image
+        if (m_layers.getLayerIsVisible(activeLayerId))
+            currentLayerBmp = m_layers.getLayerImage(activeLayerId);
+
+        // add the created images to image cache
+        m_imageCache.setLayerImage((int)ImageCacheId.CurrentLayer, currentLayerBmp, region);
+
+        // flatten layers in image cache to create final image
+        region = m_imageCache.getLayerRegion(0, (int)ImageCacheId.FinalImage + 1);
+        region.Intersect(redrawRegion);
+        Bitmap final = m_imageCache.flattenImage(
+            m_displaySize,
+            region,
+            0, (int)ImageCacheId.Foreground + 1,
+            finalImageBmp);
+
+        finalImageBmp.Dispose();
+
+        // add the final image as both the final and canvas image
+        m_imageCache.setLayerImage((int)ImageCacheId.CanvasImage, final);
+        m_imageCache.setLayerImage((int)ImageCacheId.FinalImage, final);
+
+        if (final != null)
+            final.Dispose();
+
+        diagnostics.printTimeElapsedAndRestart("UPDATE IMAGE CACHE TIME");
+
+        //m_layers.debugSaveLayerImagesToFile("m_layers", 0, m_layers.getLayerCount());
+        //m_imageCache.debugSaveLayerImagesToFile("m_imageCache", 0, m_imageCache.getLayerCount());
+    }
+
+
+
     /// <summary>
     /// Draws information about the current layer size and redraw region directly to the display image.
     /// </summary>
     private void drawUI()
     {
-        // ouline drawbuffer redraw zone
-        // horizaontal lines
+        Bitmap canvasImage = m_imageCache.getLayerImage((int)ImageCacheId.CanvasImage);
+        // outline drawbuffer redraw zone
+        // horizontal lines
         for (int i = m_redrawDrawBufferZone.X; i < m_redrawDrawBufferZone.X + m_redrawDrawBufferZone.Width; i++)
         {
             int x = i;
@@ -360,10 +514,10 @@ public class MainProgram
 
             if (bottom >= m_displaySize.Height || bottom < 0) { }
             else
-                m_canvasImage.SetPixel(x, bottom, Color.Black);
+                canvasImage.SetPixel(x, bottom, Color.Black);
             if (top < 0 || top >= m_displaySize.Height) { }
             else
-                m_canvasImage.SetPixel(x, top, Color.Black);
+                canvasImage.SetPixel(x, top, Color.Black);
         }
         // vertical lines
         for (int i = m_redrawDrawBufferZone.Y; i < m_redrawDrawBufferZone.Y + m_redrawDrawBufferZone.Height; i++)
@@ -377,36 +531,43 @@ public class MainProgram
                 continue;
 
             if (!(right >= m_displaySize.Width || right < 0))
-                m_canvasImage.SetPixel(right, y, Color.Black);
+                canvasImage.SetPixel(right, y, Color.Black);
             if (!(left < 0 || left >= m_displaySize.Width))
-                m_canvasImage.SetPixel(left, y, Color.Black);
+                canvasImage.SetPixel(left, y, Color.Black);
+
         }
         // END outline drawbuffer redraw zone
         // outline current layer
-        // horizontal lines
+
         Rectangle rec = m_layers.getCurrentLayerRegion();
-        for (int i = 0; i < rec.Width; i++)
-        {
-            int x = rec.X + i;
-            int bottom = rec.Y + rec.Height - 1;
-            int top = rec.Y;
+        Color c = Color.Black;
 
-            // skip pixels that are out of bounds
-            if (x < 0 || x > m_displaySize.Width)
-                continue;
+        if (true)
 
-            Color c = Color.Cyan;
+            // horizontal lines
+            for (int i = 0; i < rec.Width; i++)
+            {
+                int x = rec.X + i;
+                int bottom = rec.Y + rec.Height - 1;
+                int top = rec.Y;
 
-            // dotted line
-            int div = x / 7;
-            if (div % 2 == 0)
-                c = Color.Black;
+                // skip pixels that are out of bounds
+                if (x < 0 || x > m_displaySize.Width)
+                    continue;
 
-            if (!(bottom >= m_displaySize.Height || bottom < 0))
-                m_canvasImage.SetPixel(x, bottom, c);
-            if (!(top < 0 || top >= m_displaySize.Height))
-                m_canvasImage.SetPixel(x, top, c);
-        }
+                // dotted line
+                int div = x / 7;
+                if (div % 2 == 0)
+                    c = Color.Yellow;
+                else
+                    c = Color.Black;
+
+                // draw lines
+                if (!(bottom >= m_displaySize.Height || bottom < 0))
+                    canvasImage.SetPixel(x, bottom, c);
+                if (!(top < 0 || top >= m_displaySize.Height))
+                    canvasImage.SetPixel(x, top, c);
+            }
         // vertical lines
         for (int i = 0; i < rec.Height; i++)
         {
@@ -417,17 +578,18 @@ public class MainProgram
             if (y < 0 || y > m_displaySize.Height)
                 continue;
 
-            Color c = Color.Cyan;
-
             // dotted line
             int div = y / 7;
             if (div % 2 == 0)
+                c = Color.Yellow;
+            else
                 c = Color.Black;
 
+            // draw lines
             if (!(right >= m_displaySize.Width || right < 0))
-                m_canvasImage.SetPixel(right, y, c);
+                canvasImage.SetPixel(right, y, c);
             if (!(left < 0 || left >= m_displaySize.Width))
-                m_canvasImage.SetPixel(left, y, c);
+                canvasImage.SetPixel(left, y, c);
         }
         // END outline current layer
     }
@@ -445,6 +607,8 @@ public class MainProgram
         int brushHalfWidth = brushSize.Width / 2;
         int brushHalfHeight = brushSize.Height / 2;
         BlendMode mode = m_brush.getMode();
+
+        Bitmap drawBuffer = m_imageCache.getLayerImage((int)ImageCacheId.DrawBuffer);
 
         expandUpdateArea(mousePosition);
 
@@ -467,7 +631,7 @@ public class MainProgram
                     continue;
 
                 Color bp = brushImage.GetPixel(x, y);
-                Color ip = m_drawBuffer.GetPixel(current.X, current.Y);
+                Color ip = drawBuffer.GetPixel(current.X, current.Y);
 
                 // alpha multiplier from brush
                 float bpAlphacoef = bp.A / (float)byte.MaxValue;
@@ -528,7 +692,7 @@ public class MainProgram
                 } // END switch(m_brushMode)
 
                 // set blended pixel to image
-                m_drawBuffer.SetPixel(current.X, current.Y, Color.FromArgb(a, r, g, b));
+                drawBuffer.SetPixel(current.X, current.Y, Color.FromArgb(a, r, g, b));
             }
     }
 
@@ -588,14 +752,19 @@ public class MainProgram
 
         return result;
     }
-    
+
     /// <summary>
     /// Sets all pixels within m_redrawDrawBuffer to Color(0, 0, 0, 0).
     /// Sets all m_redrawDrawBuffer values to 0.
     /// </summary>
     private void clearDrawBuffer()
     {
-        using (Graphics gr = Graphics.FromImage(m_drawBuffer))
+        Bitmap drawBuffer = m_imageCache.getLayerImage((int)ImageCacheId.DrawBuffer);
+
+        if (drawBuffer == null)
+            return;
+
+        using (Graphics gr = Graphics.FromImage(drawBuffer))
         {
             gr.Clear(Color.Transparent);
         }
@@ -607,69 +776,43 @@ public class MainProgram
     }
 
     /// <summary>
-    /// Applies the drawbuffer to the canvas image.
+    /// Updates the cached current layer image and the cached canvas image to match the current drawbuffer.
     /// </summary>
-    public void applyDrawBufferToCanvasImage()
+    public void applyDrawBufferToImageCache()
     {
-        if (m_canvasImage != null)
-            m_canvasImage.Dispose();
+        // get a handle on drawbuffer and the cached current layer image
+        Bitmap drawBuffer = m_imageCache.getLayerImage((int)ImageCacheId.DrawBuffer);
+        Bitmap currentLayer = m_layers.getLayerImage(m_layers.getActiveLayer());
 
-        // reset the canvas image to the final image
-        m_canvasImage = (Bitmap)m_finalImage.Clone();
+        // create copy of cached final image to set to cacged canvas image
+        Bitmap finalImage = (Bitmap)m_imageCache.getLayerImage((int)ImageCacheId.FinalImage).Clone();
 
-        // apply the drawbuffer to the display image only
-        Bitmap final = new Bitmap(m_displaySize.Width, m_displaySize.Height, PixelFormat.Format32bppArgb);
+        // reset the cached canvas image
+        m_imageCache.setLayerImage((int)ImageCacheId.CanvasImage, finalImage);
 
-        using (Graphics gr = Graphics.FromImage(final))
-        {
-            gr.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        // reset the cached current layer image
+        m_imageCache.setLayerImage((int)ImageCacheId.CurrentLayer, currentLayer);
 
-            gr.DrawImage(m_canvasImage,
-                new Rectangle(0, 0, m_canvasImage.Width, m_canvasImage.Height),
-                new Rectangle(0, 0, m_canvasImage.Width, m_canvasImage.Height),
-                GraphicsUnit.Pixel);
-            gr.DrawImage(m_drawBuffer,
-                m_redrawDrawBufferZone,
-                m_redrawDrawBufferZone,
-                GraphicsUnit.Pixel);
-            gr.Save();
-        }
+        // apply the drawbuffer to the cached current layer image
+        m_imageCache.applyImageOnLayer((int)ImageCacheId.CurrentLayer, drawBuffer, m_redrawDrawBufferZone, m_drawBufferMode);
 
-        if (m_canvasImage != null)
-            m_canvasImage.Dispose();
+        // flatten the cached images
+        Bitmap canvasImage = m_imageCache.flattenImage(
+            m_displaySize,
+            m_redrawDrawBufferZone,
+            0, (int)ImageCacheId.Foreground + 1,
+            finalImage);
 
-        m_canvasImage = final;
+        if (finalImage != null)
+            finalImage.Dispose();
+
+        // set the display image to the flattened cache images
+        m_imageCache.setLayerImage((int)ImageCacheId.CanvasImage, canvasImage);
+
+        if (canvasImage != null)
+            canvasImage.Dispose();
     }
-
-    /// <summary>
-    /// Flattens all visible layers and sets m_finalImage and m_canvasImage to the result.
-    /// </summary>
-    /// <param name="displaySize">The size of the display_canvas in the main window</param>
-    /// <param name="redrawZone">The region that has data to be redrawn.</param>
-    /// <param name="cachedImage">The previous image to reuse old data from.</param>
-    private void updateFinalImage(Size displaySize, Rectangle redrawZone, Bitmap cachedImage)
-    {
-        diagnostics.restartTimer();
-        Bitmap final = m_layers.flattenImage(
-            displaySize,
-            redrawZone,
-            0, m_layers.getLayerCount(),
-            cachedImage);
-
-        if (m_finalImage != null)
-            m_finalImage.Dispose();
-
-        m_finalImage = final;
-
-        if (m_canvasImage != null)
-            m_canvasImage.Dispose();
-
-        m_canvasImage = (Bitmap)m_finalImage.Clone();
-
-        diagnostics.printTimeElapsedAndRestart("FLATTEN LAYERS TIME");
-    }
-
-
+    
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
     //     Menu Functions
@@ -683,13 +826,13 @@ public class MainProgram
     public void createNewProject(Bitmap image, int layerCount)
     {
         m_displaySize = image.Size;
-        
+
         // clear layers
         m_layers.clearAllLayers();
 
         // set first layer to default image
-        for(int i = 0; i < layerCount; i++)
-            m_layers.addLayer("Layer " + i, new Point(0, 0), image, 0);
+        for (int i = 0; i < layerCount; i++)
+            m_layers.addLayer("Layer " + (i + 1), new Rectangle(new Point(0, 0), image.Size), image, 0);
 
         // create blank image
         Bitmap newImage = new Bitmap(image.Width, image.Height, PixelFormat.Format32bppArgb);
@@ -701,18 +844,12 @@ public class MainProgram
             gr.Save();
         }
 
-        if (m_finalImage != null)
-            m_finalImage.Dispose();
-        if (m_canvasImage != null)
-            m_canvasImage.Dispose();
-
-        // assign image to persisting images
-        m_finalImage = (Bitmap)newImage.Clone();
-        m_canvasImage = (Bitmap)newImage.Clone();
-
-        drawUI();
+        m_imageCache.setLayerImage((int)ImageCacheId.FinalImage, newImage);
+        m_imageCache.setLayerImage((int)ImageCacheId.CanvasImage, newImage);
 
         newImage.Dispose();
+
+        drawUI();
     }
 
     /// <summary>
@@ -721,11 +858,9 @@ public class MainProgram
     /// <param name="position">The id of the layer to be made active.</param>
     public void changeActiveLayer(int position)
     {
-        if (m_canvasImage != null)
-            m_canvasImage.Dispose();
-
-        m_canvasImage = (Bitmap)m_finalImage.Clone();
         m_layers.setActiveLayer(position);
+        createImageCache();
+
         drawUI();
     }
 
@@ -736,15 +871,42 @@ public class MainProgram
     /// <returns></returns>
     public bool toggleLayerVisiblity(int position)
     {
+
         bool result = m_layers.toggleLayerIsVisible(position);
 
-        Rectangle region = new Rectangle(new Point(0, 0),  m_layers.getTotalSize());
+        Rectangle region = new Rectangle(new Point(0, 0), m_layers.getTotalSize());
 
-        Bitmap bmp = new Bitmap(region.Width, region.Height);
-        updateFinalImage(m_displaySize, region, bmp);
-        bmp.Dispose();
+        string str = "";
+        if (result)
+            str = "TOGGLE LAYER " + position + " ON";
+        else
+            str = "TOGGLE LAYER " + position + " OFF";
+
+
+        diagnostics.printToConsole("START " + str);
+
+        //updateFinalImage(m_displaySize, region);
+        createImageCache();
 
         drawUI();
+        diagnostics.printToConsole("END " + str);
+
+        //m_layers.debugSaveLayerImagesToFile("m_layers", 0, m_layers.getLayerCount());
+        //m_imageCache.debugSaveLayerImagesToFile("m_imageCache", 0, m_imageCache.getLayerCount());
+
+        return result;
+    }
+
+    public bool addLayer(string name, Size size, Point position)
+    {
+        Bitmap bmp = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppArgb);
+        bool result = m_layers.addLayer(name, new Rectangle(position, size), bmp);
+        bmp.Dispose();
+
+        if (result == true)
+            createImageCache();
+
+        Console.Write("\n number of layers: " + m_layers.getLayerCount());
 
         return result;
     }
@@ -766,11 +928,11 @@ public class MainProgram
     }
     public Bitmap getFinalImageCopy()
     {
-        return (Bitmap)m_finalImage.Clone();
+        return (Bitmap)m_imageCache.getLayerImage((int)ImageCacheId.FinalImage).Clone();
     }
     public Bitmap getCanvasImageCopy()
     {
-        return (Bitmap)m_canvasImage.Clone();
+        return (Bitmap)m_imageCache.getLayerImage((int)ImageCacheId.CanvasImage).Clone();
     }
     public Color getSelectedColor()
     {
@@ -787,5 +949,18 @@ public class MainProgram
     public void setDisplaySize(Size size)
     {
         m_displaySize = size;
+    }
+    public int getLayerCount()
+    {
+        return m_layers.getLayerCount();
+    }
+    public string getLayerText(int position)
+    {
+        return m_layers.getName(position);
+        
+    }
+    public Rectangle getCurrentLayerRegion()
+    {
+        return m_layers.getCurrentLayerRegion();
     }
 }

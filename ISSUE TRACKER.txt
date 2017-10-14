@@ -19,9 +19,18 @@ Description of the issue
 ===================================================================================================
 ===================================================================================================
 
+	ID: coreBlend000
+	VERSION: 0.0.1.0
+	STATUS: Pending
+	RISK: LOW
+	Colors with an alpha value less than 255 create dark edges when they overlay another color
+		I: There are ugly dark edges around lines
+		S: Adjust the blending algorithm to correct the blend
+
+***************************************************************************************************
 	ID: coreMemory000
-	Version: 0.0.0.5
-	Status: Pending
+	VERSION: 0.0.0.5
+	STATUS: Pending
 	RISK: 
 	Clicking the drawing area rapidly causes excessive memory use
 		I: With very large images it's possible to get out of memory exception
@@ -29,7 +38,7 @@ Description of the issue
 			-updateFinalImage(...), drawUI() and clearDrawBuffer() are not the source
 			-all the images in LayerManager.applyDrawBuffer(...) appear to be disposed of properly
 			-it seems to be in RasterBlend.mergeImages(...)
-			-possibly the way bitmap.UnlockBits(...) is handled by garbage collectioin
+			-possibly the way bitmap.UnlockBits(...) is handled by garbage collection
 		S: Find the image thats not being disposed and dispose
 ***************************************************************************************************
 	ID: coreImage002
@@ -51,11 +60,13 @@ Description of the issue
 		I: Drawing with mouse input is uneven/disconnected
 		S: Calculate a line from current point to previous point and draw along it
 ***************************************************************************************************
+
 ###################################################################################################
 ###################################################################################################
 ####################################      RESOLVED ISSUES      ####################################
 ###################################################################################################
 ###################################################################################################
+
 ***************************************************************************************************
 	ID: coreImage001
 	VERSION: 0.0.0.2 (0.0.0.4)
