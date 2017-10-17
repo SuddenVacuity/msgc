@@ -9,6 +9,41 @@ issue	- id of issue - A known issue that's been logged
 	 and the description of the issue will state what was done)
 	 
 
+
+v0.0.1.1 - Code Review
+	added ui - main form's layerlist create button opens DialogNewLayer and creates a layer based on the result
+	remov ui - TextBoxMarkedNumber no longer exists. Text validation must now be done at the point of use
+	fixed ui - TextBoxMarked returns an empty string if watermark is visible
+	fixed ui - TextBoxMarked checks for null input
+	fixed ui - SkinnedWindow defaults to autosize instead of constant size
+	fixed ui - DialogMessage auto positions+sizes controls and resizes itself to show them
+	fixed ui - DialogNewLayer validates plain text input
+	fixed ui - DialogNewLayer strings for window text are defined at the top of the file
+	fixed ui - DialogNewLayer returns name string
+	fixed ui - DialogNewProject validates plain text input
+	fixed ui - DialogNewProject strings for window text are defined at the top of the file
+	fixed ui - FormMain moved image creation for new projects to MainProgram
+	fixed ui - FormMain organized the order stray methods were defined in
+	fixed core - CanvasFragment gives feedback on wether get/set pixel was successful
+	fixed core - CanvasFragment does not store null images except when uninitialized or after being cleared
+	fixed core - CanvasFragment checks for valid construction
+	fixed core - CanvasFragment clears itself and throws exception on invalid construction
+	fixed core - CanvasFragment returns empty values for getSize/getRegion if no image
+	fixed core - Brush give feedback on wether set image was successful
+	fixed core - Brush checks for valid construction
+	fixed core - Brush clears itself and throws exception on invalid construction
+	fixed core - Layer can have null CanvasFragments
+	fixed core - Layer added documentation
+	fixed core - LayerManager removed memory leak
+	fixed core - LayerManager set cleared layers to null for null checking
+	fixed core - LayerManager caught many forgotten below 0 checks
+	fixed core - LayerManager gives feedback on method success/fail
+	fixed core - LayerManager added documentation
+	fixed core - MainProgram creating a new project is more efficient and more flexible
+	fixed core - MainProgram gives feedback on method success/fail
+	fixed core - MainProgram added missing bounds checks
+	fixed core - MainProgram added documentation
+
 v0.0.1.0 - Image Caching and Custom Interface Skin
 	added ui - skinned form/textBox/label/menuStrip/panel/toolStripItem
 	added ui - skinned forms and controls get display values from an easily defined source
@@ -21,7 +56,6 @@ v0.0.1.0 - Image Caching and Custom Interface Skin
 	added core - image caching to cap the time it takes to flatten images while drawing
 	added core - now able to apply an image to any layer's image
 
-
 v0.0.0.5 - Improved Image Merging & Test Shortcuts
 	added ui - information about the program
 	added ui - key inputs for testing with different images
@@ -30,7 +64,6 @@ v0.0.0.5 - Improved Image Merging & Test Shortcuts
 	fixed core - *coreImage002 - merging images now reads/writes pixels in images by line
 	fixed core -               - creating new projects is now more flexible
 	issue core - coreMemory000 - Clicking the drawing area rapidly causes excessive memory use
-
 
 v0.0.0.4 - Project Restructure Part 2 & Increase Merge Image Efficiency
 	added core - class to store program directories and environment variables

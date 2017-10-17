@@ -4,8 +4,12 @@ using System.Drawing;
 
 public class DialogNewProject : SkinnedWindow
 {
-    TextBoxNumberMarked m_textBoxWidth;
-    TextBoxNumberMarked m_textBoxHeight;
+    // The data returned by the dialog
+    public int m_width = 0;
+    public int m_height = 0;
+
+    TextBoxMarked m_textBoxWidth;
+    TextBoxMarked m_textBoxHeight;
 
     SkinnedLabel m_labelInformation;
     SkinnedLabel m_labelWidth;
@@ -13,9 +17,6 @@ public class DialogNewProject : SkinnedWindow
 
     SkinnedButton m_buttonConfirm;
     SkinnedButton m_buttonCancel;
-
-    public int m_width = 0;
-    public int m_height = 0;
 
     public DialogNewProject()
     {
@@ -50,12 +51,14 @@ public class DialogNewProject : SkinnedWindow
         string stringLabelInformation = "Enter the size of the new project in pixels.";
         string stringLabelWidth = "Width:";
         string stringLabelHeight = "Height:";
+        string stringErrorInvalidInputTitle  = "Invalid Input";
+        string stringErrorInvalidInput       = "Error creating new project:";
+        string stringErrorInvalidInputWidth  = "\n   - Width must be greater than 0\n      and only contain characters 0~9";
+        string stringErrorInvalidInputHeight = "\n   - Height must be greater than 0\n      and only contain characters 0~9";
 
-        ////////////////////////////////////////
-        // create controls and apply the data //
-        ////////////////////////////////////////
-
-        // Main Window
+        /////////////////////////////
+        //   Set the form values   //
+        /////////////////////////////
         this.ShowInTaskbar = false;
         this.Text = stringTitle;
         this.Width = thisSize.Width;
@@ -67,25 +70,18 @@ public class DialogNewProject : SkinnedWindow
         this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         this.AutoSize = true;
 
+        ////////////////////////////
+        // Apply data to controls //
+        ////////////////////////////
         // Number input for width
-        m_textBoxWidth = new TextBoxNumberMarked(stringTextBoxEmpty);
+        m_textBoxWidth = new TextBoxMarked(stringTextBoxEmpty);
         m_textBoxWidth.Top  = thisPadding.Height + pointTextBoxWidth.Y;
         m_textBoxWidth.Left = thisPadding.Width + pointTextBoxWidth.X;
-        m_textBoxWidth.TextChanged += (s, e) =>
-        {
-            Console.Write("\nText Changed in layer width box");
-            int.TryParse(m_textBoxWidth.Text, out m_width);
-        };
 
         // Number input for height
-        m_textBoxHeight = new TextBoxNumberMarked(stringTextBoxEmpty);
+        m_textBoxHeight = new TextBoxMarked(stringTextBoxEmpty);
         m_textBoxHeight.Top  = thisPadding.Height + pointTextBoxHeight.Y;
         m_textBoxHeight.Left = thisPadding.Width + pointTextBoxHeight.X;
-        m_textBoxHeight.TextChanged += (s, e) =>
-        {
-            Console.Write("\nText Changed in layer height box");
-            int.TryParse(m_textBoxHeight.Text, out m_height);
-        };
 
         // Informational text
         m_labelInformation = new SkinnedLabel();
@@ -114,18 +110,34 @@ public class DialogNewProject : SkinnedWindow
         m_buttonConfirm.Text = stringConfirm;
         m_buttonConfirm.Click += (vvv, bbb) =>
         {
-            if (m_width > 0 && m_height > 0)
+            bool validWidth = false;
+            bool validHeight = false;
+            
+            if (int.TryParse(m_textBoxWidth.Text, out m_width))
+                if (m_width > 0)
+                    validWidth = true;
+            if (int.TryParse(m_textBoxHeight.Text, out m_height))
+                if (m_height > 0)
+                    validHeight = true;
+
+            if (validWidth == true &&
+                validHeight == true)
             {
                 this.DialogResult = DialogResult.OK;
                 this.Close();
             }
             else
             {
-                Console.Write("\nCreate new project failed." +
-                    "\n  values must be greater than 0 - width: " + m_width +
-                    "\n  values must be greater than 0 - height: " + m_height);
-            }
+                string message = stringErrorInvalidInput;
+                
+                if (validWidth == false)
+                    message += stringErrorInvalidInputWidth;
+                if (validHeight == false)
+                    message += stringErrorInvalidInputHeight;
 
+                DialogMessage error = new DialogMessage(stringErrorInvalidInputTitle, message);
+                error.ShowDialog();
+            }
         };
 
         // Cancel Button

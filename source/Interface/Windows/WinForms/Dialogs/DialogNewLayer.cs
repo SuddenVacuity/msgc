@@ -4,9 +4,14 @@ using System.Drawing;
 
 public class DialogNewLayer : SkinnedWindow
 {
+    // The data returned by the dialog
+    public string m_name = "";
+    public int m_width = 0;
+    public int m_height = 0;
+
     TextBoxMarked m_textBoxName;
-    TextBoxNumberMarked m_textBoxWidth;
-    TextBoxNumberMarked m_textBoxHeight;
+    TextBoxMarked m_textBoxWidth;
+    TextBoxMarked m_textBoxHeight;
 
     SkinnedLabel m_labelInformation;
     SkinnedLabel m_labelName;
@@ -15,11 +20,7 @@ public class DialogNewLayer : SkinnedWindow
 
     SkinnedButton m_buttonConfirm;
     SkinnedButton m_buttonCancel;
-
-    public string m_name = "";
-    public int m_width = 0;
-    public int m_height = 0;
-
+    
     public DialogNewLayer()
     {
         ////////////////////////////
@@ -38,25 +39,30 @@ public class DialogNewLayer : SkinnedWindow
             150);
 
         // standard-sized elements
-        Point pointLabelName     = new Point(0,  155);
-        Point pointLabelWidth    = new Point(0,  180);
-        Point pointLabelHeight   = new Point(0,  205);
-        Point pointTextBoxName   = new Point(60, 155);
-        Point pointTextBoxWidth  = new Point(60, 180);
-        Point pointTextBoxHeight = new Point(60, 205);
+        Point pointLabelName     = new Point(10,  155);
+        Point pointLabelWidth    = new Point(10,  180);
+        Point pointLabelHeight   = new Point(10,  205);
+        Point pointTextBoxName   = new Point(70, 155);
+        Point pointTextBoxWidth  = new Point(70, 180);
+        Point pointTextBoxHeight = new Point(70, 205);
         Point pointButtonConfirm = new Point(80, 300);
         Point pointButtonCancel  = new Point(0,  300);
 
         // Text data
         string stringTitle = "Add Layer";
-        string stringTextBoxEmpty = "Type Here";
-        string stringConfirm = "Confirm";
-        string stringCancel = "Cancel";
-        string stringLabelInformation = "Create a new layer.WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW";
+        string stringLabelInformation = "Create a new layer.";
         string stringLabelName = "Name:";
         string stringLabelWidth = "Width:";
         string stringLabelHeight = "Height:";
-        
+        string stringTextBoxEmpty = "Type Here...";
+        string stringConfirm = "Confirm";
+        string stringCancel = "Cancel";
+        string stringErrorInvalidInputTitle = "Invalid Input";
+        string stringErrorInvalidInput  = "Error creating new layer:";
+        string stringErrorInvalidInputName   = "\n   - Name is not valid <-- THIS SHOULD NOT APPEAR";
+        string stringErrorInvalidInputWidth  = "\n   - Width must be greater than 0\n      and only contain characters 0~9";
+        string stringErrorInvalidInputHeight = "\n   - Height must be greater than 0\n      and only contain characters 0~9";
+
         ////////////////////////////////////////
         // create controls and apply the data //
         ////////////////////////////////////////
@@ -78,31 +84,16 @@ public class DialogNewLayer : SkinnedWindow
         m_textBoxName = new TextBoxMarked(stringTextBoxEmpty);
         m_textBoxName.Top  = thisPadding.Height + pointTextBoxName.Y;
         m_textBoxName.Left = thisPadding.Width + pointTextBoxName.X;
-        m_textBoxName.TextChanged += (s, e) =>
-        {
-            Console.Write("\nText Changed in layer name box");
-            m_name = m_textBoxName.Text;
-        };
         
         // Number input for width
-        m_textBoxWidth = new TextBoxNumberMarked(stringTextBoxEmpty);
+        m_textBoxWidth = new TextBoxMarked(stringTextBoxEmpty);
         m_textBoxWidth.Top  = thisPadding.Height + pointTextBoxWidth.Y;
         m_textBoxWidth.Left = thisPadding.Width + pointTextBoxWidth.X;
-        m_textBoxWidth.TextChanged += (s, e) =>
-        {
-            Console.Write("\nText Changed in layer width box");
-            int.TryParse(m_textBoxWidth.Text, out m_width);
-        };
 
         // Number input for height
-        m_textBoxHeight = new TextBoxNumberMarked(stringTextBoxEmpty);
+        m_textBoxHeight = new TextBoxMarked(stringTextBoxEmpty);
         m_textBoxHeight.Top  = thisPadding.Height + pointTextBoxHeight.Y;
         m_textBoxHeight.Left = thisPadding.Width + pointTextBoxHeight.X;
-        m_textBoxHeight.TextChanged += (s, e) =>
-        {
-            Console.Write("\nText Changed in layer height box");
-            int.TryParse(m_textBoxHeight.Text, out m_height);
-        };
 
         // Informational text
         m_labelInformation = new SkinnedLabel();
@@ -117,18 +108,21 @@ public class DialogNewLayer : SkinnedWindow
         m_labelName.Top  = thisPadding.Height + pointLabelName.Y;
         m_labelName.Left = thisPadding.Width + pointLabelName.X;
         m_labelName.Text = stringLabelName;
+        m_labelName.Padding = new Padding(2);
 
         // Label for width input box
         m_labelWidth = new SkinnedLabel();
         m_labelWidth.Top  = thisPadding.Height + pointLabelWidth.Y;
         m_labelWidth.Left = thisPadding.Width + pointLabelWidth.X;
         m_labelWidth.Text = stringLabelWidth;
+        m_labelWidth.Padding = new Padding(2);
 
         // Label for height input box
         m_labelHeight = new SkinnedLabel();
         m_labelHeight.Top  = thisPadding.Height + pointLabelHeight.Y;
         m_labelHeight.Left = thisPadding.Width + pointLabelHeight.X;
         m_labelHeight.Text = stringLabelHeight;
+        m_labelHeight.Padding = new Padding(2);
 
         // Confirm button
         m_buttonConfirm = new SkinnedButton();
@@ -137,18 +131,43 @@ public class DialogNewLayer : SkinnedWindow
         m_buttonConfirm.Text = stringConfirm;
         m_buttonConfirm.Click += (vvv, bbb) =>
         {
-            if (m_width > 0 && m_height > 0)
+            bool validName = false;
+            bool validWidth = false;
+            bool validHeight = false;
+
+            if (m_textBoxName.Text != null)
+            {
+                m_name = m_textBoxName.Text;
+                validName = true;
+            }
+            if (int.TryParse(m_textBoxWidth.Text, out m_width))
+                if(m_width > 0)
+                    validWidth = true;
+            if (int.TryParse(m_textBoxHeight.Text, out m_height))
+                if(m_height > 0)
+                    validHeight = true;
+
+            if (validName == true &&
+                validWidth == true &&
+                validHeight == true)
             {
                 this.DialogResult = DialogResult.OK;
                 this.Close();
             }
             else
             {
-                Console.Write("\nCreate new project failed." +
-                    "\n  values must be greater than 0 - width: " + m_width +
-                    "\n  values must be greater than 0 - height: " + m_height);
-            }
+                string message = stringErrorInvalidInput;
 
+                if (validName == false)
+                    message += stringErrorInvalidInputName;
+                if (validWidth == false)
+                    message += stringErrorInvalidInputWidth;
+                if (validHeight == false)
+                    message += stringErrorInvalidInputHeight;
+
+                DialogMessage error = new DialogMessage(stringErrorInvalidInputTitle, message);
+                error.ShowDialog();
+            }
         };
 
         // Cancel Button

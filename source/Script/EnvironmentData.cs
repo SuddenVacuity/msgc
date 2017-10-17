@@ -3,7 +3,7 @@ using System.Drawing;
 
 public class EnvironmentData
 {
-    private string APPLICATION_VERSION = "v0.0.1.0";
+    private string APPLICATION_VERSION = "v0.0.1.1";
     private string APPLICATION_OWNER = "Gerald Coggins";
 
     private string DIRECTORY_IMAGE = @"//images";

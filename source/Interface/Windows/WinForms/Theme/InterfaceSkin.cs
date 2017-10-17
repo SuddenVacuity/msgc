@@ -33,7 +33,6 @@ public static class InterfaceSkin
     ////////////////////////////
     ////      Windows       ////
     ////////////////////////////
-    public static Size WindowSizeNormal = new Size(800, 600);
     public static Color WindowColorBackground = mainBackground;
     public static Color WindowColorText = mainText;
     public static Padding WindowPadding = new Padding(10, 10, 0, 0); // right and down padding stack with control margin

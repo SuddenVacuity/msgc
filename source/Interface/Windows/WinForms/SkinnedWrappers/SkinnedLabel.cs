@@ -8,11 +8,13 @@ public class SkinnedLabel : Label
     {
         this.Text = "Label Text";
         this.Name = "Label";
+        this.AutoSize = false;
         this.Size = InterfaceSkin.LabelSizeNormal;
         this.BackColor = InterfaceSkin.LabelColorBackground;
         this.ForeColor = InterfaceSkin.LabelColorText;
         this.Margin = InterfaceSkin.LabelMargin;
-        this.TextAlign = ContentAlignment.MiddleLeft;
+        this.TextAlign = ContentAlignment.TopLeft;
+        this.Padding = new Padding(10);
     }
     
 }

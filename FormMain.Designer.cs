@@ -501,7 +501,7 @@ namespace msgc
             // 
             this.aboutToolStripMenuItem.ForeColor = System.Drawing.Color.White;
             this.aboutToolStripMenuItem.Name = "Tool";
-            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(133, 22);
             this.aboutToolStripMenuItem.Text = "About";
             this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
             // 
@@ -509,7 +509,7 @@ namespace msgc
             // 
             this.controlsToolStripMenuItem.ForeColor = System.Drawing.Color.White;
             this.controlsToolStripMenuItem.Name = "Tool";
-            this.controlsToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.controlsToolStripMenuItem.Size = new System.Drawing.Size(133, 22);
             this.controlsToolStripMenuItem.Text = "Controls";
             this.controlsToolStripMenuItem.Click += new System.EventHandler(this.controlsToolStripMenuItem_Click);
             // 
@@ -517,7 +517,7 @@ namespace msgc
             // 
             this.testDialogToolStripMenuItem.ForeColor = System.Drawing.Color.White;
             this.testDialogToolStripMenuItem.Name = "Tool";
-            this.testDialogToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.testDialogToolStripMenuItem.Size = new System.Drawing.Size(133, 22);
             this.testDialogToolStripMenuItem.Text = "Test Dialog";
             this.testDialogToolStripMenuItem.Click += new System.EventHandler(this.testDialogToolStripMenuItem_Click);
             // 
@@ -527,7 +527,7 @@ namespace msgc
             this.display_canvas.BackgroundImage = global::msgc.Properties.Resources.backGround;
             this.display_canvas.Location = new System.Drawing.Point(0, 0);
             this.display_canvas.Name = "display_canvas";
-            this.display_canvas.Size = new System.Drawing.Size(151, 139);
+            this.display_canvas.Size = new System.Drawing.Size(200, 200);
             this.display_canvas.TabIndex = 3;
             this.display_canvas.TabStop = false;
             this.display_canvas.MouseDown += new System.Windows.Forms.MouseEventHandler(this.display_canvas_MouseDown);

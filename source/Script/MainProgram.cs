@@ -293,39 +293,30 @@ public class MainProgram
             case 'W':
                 {
                     m_layers.clearAllLayers();
-                    Bitmap bmp = new Bitmap(imageSize.Width, imageSize.Height, PixelFormat.Format32bppArgb);
-                    Console.Write("\nCreating " + imageSize.Width + "x" + imageSize.Height + " layers with transparent image");
-                    createNewProject(bmp, 3);
+                    Console.Write("\nCreating " + imageSize.Width + "x" + imageSize.Height + "layer with transparent white image");
+                    createNewProject(Color.FromArgb(0, 255, 255, 255), imageSize);
+                    m_imageCache.clearAllLayers();
+                    createImageCache();
                     result = true;
                     break;
                 }
             case 'E':
                 {
                     m_layers.clearAllLayers();
-                    Bitmap bmp;
-                    Bitmap img = new Bitmap(imageSize.Width, imageSize.Height, PixelFormat.Format32bppArgb);
-                    using (Graphics gr = Graphics.FromImage(img))
-                    {
-                        gr.Clear(Color.FromArgb(100, 255, 255, 255));
-                    }
-                    bmp = img;
-                    Console.Write("\nCreating " + imageSize.Width + "x" + imageSize.Height + "layers with semi-transparent white image");
-                    createNewProject(bmp, 3);
+                    Console.Write("\nCreating " + imageSize.Width + "x" + imageSize.Height + "layer with semi-transparent white image");
+                    createNewProject(Color.FromArgb(0, 0, 0, 0), imageSize);
+                    m_imageCache.clearAllLayers();
+                    createImageCache();
                     result = true;
                     break;
                 }
             case 'R':
                 {
                     m_layers.clearAllLayers();
-                    Bitmap bmp;
-                    Bitmap img = new Bitmap(imageSize.Width, imageSize.Height, PixelFormat.Format32bppArgb);
-                    using (Graphics gr = Graphics.FromImage(img))
-                    {
-                        gr.Clear(Color.White);
-                    }
-                    bmp = img;
-                    Console.Write("\nCreating " + imageSize.Width + "x" + imageSize.Height + "layers solid white image");
-                    createNewProject(bmp, 3);
+                    Console.Write("\nCreating " + imageSize.Width + "x" + imageSize.Height + "layer solid white image");
+                    createNewProject(Color.FromArgb(255, 255, 255, 255), imageSize);
+                    m_imageCache.clearAllLayers();
+                    createImageCache();
                     result = true;
                     break;
                 }
@@ -466,7 +457,7 @@ public class MainProgram
             currentLayerBmp = m_layers.getLayerImage(activeLayerId);
 
         // add the created images to image cache
-        m_imageCache.setLayerImage((int)ImageCacheId.CurrentLayer, currentLayerBmp, region);
+        m_imageCache.setLayerImage((int)ImageCacheId.CurrentLayer, currentLayerBmp, region.Location);
 
         // flatten layers in image cache to create final image
         region = m_imageCache.getLayerRegion(0, (int)ImageCacheId.FinalImage + 1);
@@ -776,7 +767,7 @@ public class MainProgram
     }
 
     /// <summary>
-    /// Updates the cached current layer image and the cached canvas image to match the current drawbuffer.
+    /// Applies the drawbuffer to the current layer image and cached current layer image.
     /// </summary>
     public void applyDrawBufferToImageCache()
     {
@@ -812,7 +803,7 @@ public class MainProgram
         if (canvasImage != null)
             canvasImage.Dispose();
     }
-    
+
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
     //     Menu Functions
@@ -820,35 +811,44 @@ public class MainProgram
     //////////////////////////////////////////////////
 
     /// <summary>
-    /// Quick and dirty function to reset the application's image
+    /// Create a new project using an image as the starting layer.
     /// </summary>
-    /// <param name="displaySize"></param>
-    public void createNewProject(Bitmap image, int layerCount)
+    public void createNewProject(Bitmap image)
     {
         m_displaySize = image.Size;
 
         // clear layers
         m_layers.clearAllLayers();
+        m_imageCache.clearAllLayers();
 
-        // set first layer to default image
-        for (int i = 0; i < layerCount; i++)
-            m_layers.addLayer("Layer " + (i + 1), new Rectangle(new Point(0, 0), image.Size), image, 0);
+        // set first layer to input image
+        m_layers.addLayer("Layer 1", new Rectangle(new Point(0, 0), image.Size), image, 0);
 
-        // create blank image
-        Bitmap newImage = new Bitmap(image.Width, image.Height, PixelFormat.Format32bppArgb);
+        createImageCache();
+        drawUI();
+    }
+    /// <summary>
+    /// Create a new project using a solid color as the starting layer.
+    /// </summary>
+    public void createNewProject(Color color, Size size)
+    {
+        Bitmap image = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppArgb);
 
-        // set default image to new image
-        using (Graphics gr = Graphics.FromImage(newImage))
+        using (Graphics gr = Graphics.FromImage(image))
         {
-            gr.Clear(Color.Transparent);
-            gr.Save();
+            gr.Clear(color);
         }
 
-        m_imageCache.setLayerImage((int)ImageCacheId.FinalImage, newImage);
-        m_imageCache.setLayerImage((int)ImageCacheId.CanvasImage, newImage);
+        m_displaySize = image.Size;
 
-        newImage.Dispose();
+        // clear layers
+        m_layers.clearAllLayers();
+        m_imageCache.clearAllLayers();
 
+        // set first layer to input image
+        m_layers.addLayer("Layer 1", new Rectangle(new Point(0, 0), image.Size), image, 0);
+
+        createImageCache();
         drawUI();
     }
 
@@ -917,19 +917,27 @@ public class MainProgram
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    public void setBrushImage(Bitmap image)
+    public bool setBrushImage(Bitmap image)
     {
-        m_brush.setImage(image);
+        return m_brush.setImage(image);
     }
     public void setBrushMode(BlendMode brushMode, BlendMode bufferMode)
     {
         m_brush.setMode(brushMode);
         m_drawBufferMode = bufferMode;
     }
+    /// <summary>
+    /// Returns a copy of the current final image.
+    /// </summary>
+    /// <returns></returns>
     public Bitmap getFinalImageCopy()
     {
         return (Bitmap)m_imageCache.getLayerImage((int)ImageCacheId.FinalImage).Clone();
     }
+    /// <summary>
+    /// Returns a copy of the current display image.
+    /// </summary>
+    /// <returns></returns>
     public Bitmap getCanvasImageCopy()
     {
         return (Bitmap)m_imageCache.getLayerImage((int)ImageCacheId.CanvasImage).Clone();
@@ -938,27 +946,72 @@ public class MainProgram
     {
         return m_color;
     }
-    public void setSelectedColor(Color color)
+    /// <summary>
+    /// Sets the primary color to the input color. 
+    /// Returns true on success.
+    /// </summary>
+    /// <param name="color"></param>
+    /// <returns></returns>
+    public bool setSelectedColor(Color color)
     {
+        if (color == Color.Empty)
+            return false;
+
         m_color = color;
+        return true;
+    }
+    /// <summary>
+    /// Sets the secondary color to the input color. 
+    /// Returns true on success.
+    /// </summary>
+    /// <param name="color"></param>
+    /// <returns></returns>
+    public bool setSelectedColorAlt(Color color)
+    {
+        if (color == Color.Empty)
+            return false;
+        
+        m_colorAlt = color;
+        return true;
     }
     public Color getSelectedColorAlt()
     {
         return m_colorAlt;
     }
-    public void setDisplaySize(Size size)
+    public void swapSelectedColors()
     {
+        Color c = m_color;
+
+        m_color = m_colorAlt;
+        m_colorAlt = c;
+    }
+    public bool setDisplaySize(Size size)
+    {
+        if (size.Width > 0 ||
+            size.Height > 0 ||
+            size == Size.Empty)
+            return false;
+
         m_displaySize = size;
+        return true;
     }
     public int getLayerCount()
     {
         return m_layers.getLayerCount();
     }
+    /// <summary>
+    /// Get the name of the layer at position. 
+    /// Returns null on fail.
+    /// </summary>
     public string getLayerText(int position)
     {
         return m_layers.getName(position);
-        
     }
+    /// <summary>
+    /// Gets the region the current layer covers. 
+    /// Returns Rectagle.Empty on fail.
+    /// </summary>
+    /// <returns></returns>
     public Rectangle getCurrentLayerRegion()
     {
         return m_layers.getCurrentLayerRegion();

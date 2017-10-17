@@ -20,7 +20,7 @@ public class DialogTestSkin : SkinnedWindow
     SkinnedToolStripItem menuStripItemItemItem3;
 
     TextBoxMarked textBoxMarked;
-    TextBoxNumberMarked textBoxNumberMarked;
+    TextBoxMarked textBoxNumberMarked;
 
     LayerList layerList;
 
@@ -43,7 +43,7 @@ public class DialogTestSkin : SkinnedWindow
         panel = new SkinnedPanel();
         textBox = new SkinnedTextBox();
         textBoxMarked = new TextBoxMarked("Type Text...");
-        textBoxNumberMarked = new TextBoxNumberMarked("Type Number...");
+        textBoxNumberMarked = new TextBoxMarked("Type Number...");
         button = new SkinnedButton();
         button2 = new SkinnedButton();
 

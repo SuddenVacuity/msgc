@@ -17,8 +17,7 @@ namespace msgc
     public partial class FormMain : SkinnedWindow
     {
         MainProgram m_program = new MainProgram();
-        bool skinMode = false;
-       
+
         /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         / %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         /                          FUNCTIONS
@@ -34,6 +33,7 @@ namespace msgc
             this.KeyPreview = true;
             this.AllowTransparency = true;
             this.Padding = new Padding(0);
+            this.AutoSize = false;
             display_canvas.Size = new Size(1000, 1000);
 
             m_program.init(display_canvas.Size);
@@ -51,13 +51,13 @@ namespace msgc
             text_input_color_red.Text = Convert.ToString(selectedBrushColor.R);
             text_input_color_green.Text = Convert.ToString(selectedBrushColor.G);
             text_input_color_blue.Text = Convert.ToString(selectedBrushColor.B);
-            
+
             color_box.BackColor = selectedBrushColor;
             color_box_alt.BackColor = selectedBrushColorAlt;
             color_black.BackColor = Color.Black;
             color_gray.BackColor = Color.Gray;
             color_white.BackColor = Color.White;
-            color_1.BackColor = Color.FromArgb(255, 255, 0,   0);
+            color_1.BackColor = Color.FromArgb(255, 255, 0, 0);
             color_2.BackColor = Color.FromArgb(255, 255, 127, 0);
             color_3.BackColor = Color.FromArgb(255, 255, 255, 0);
             color_4.BackColor = Color.FromArgb(255, 127, 255, 0);
@@ -67,7 +67,7 @@ namespace msgc
             color_7.BackColor = Color.FromArgb(255, 0, 255, 255);
             color_8.BackColor = Color.FromArgb(255, 0, 127, 255);
 
-            color_9.BackColor  = Color.FromArgb(255, 0,   0, 255);
+            color_9.BackColor = Color.FromArgb(255, 0, 0, 255);
             color_10.BackColor = Color.FromArgb(255, 127, 0, 255);
             color_11.BackColor = Color.FromArgb(255, 255, 0, 255);
             color_12.BackColor = Color.FromArgb(255, 255, 0, 127);
@@ -103,7 +103,22 @@ namespace msgc
             };
             layerList.LayerItemAdd += (s, e) =>
             {
-                Console.Write("\n1");
+                DialogNewLayer dialog = new DialogNewLayer();
+                DialogResult result = dialog.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    // add layer to program
+                    m_program.addLayer(
+                        dialog.m_name, 
+                        new Size(dialog.m_width, dialog.m_height), 
+                        new Point(0, 0));
+                    
+                    // add layer to layer list control
+                    layerList.AddItem(dialog.m_name);
+
+                    // update display
+                    updateCanvasImage();
+                }
             };
             layerList.LayerItemRemove += (s, e) =>
             {
@@ -118,7 +133,7 @@ namespace msgc
             // END layer list
             //
         }
-        
+
         private void FormMain_Load(object sender, EventArgs e)
         {
         }
@@ -151,7 +166,7 @@ namespace msgc
                 modifiers |= 4;
 
             bool refreshDisplay = m_program.onKeyPress(0, key, modifiers);
-            
+
             if (refreshDisplay == true)
             {
                 updateCanvasImage();
@@ -183,21 +198,24 @@ namespace msgc
             DialogResult result = newProjectMessageBox.ShowDialog();
             if (result == DialogResult.OK)
             {
+                // empty layer list control
                 layerList.clearAll();
 
+                // get input from new project dialog
                 width = newProjectMessageBox.m_width;
                 height = newProjectMessageBox.m_height;
-                Bitmap bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
-                display_canvas.Size = bmp.Size;
-                display_canvas.Image = bmp;
-                m_program.createNewProject(bmp, 3);
 
+                // tell the program to create the project
+                m_program.createNewProject(Color.FromArgb(0, 255, 255, 255), new Size(width, height));
+
+                // populate the layer list control
                 for (int i = 0; i < m_program.getLayerCount(); i++)
                 {
                     string s = m_program.getLayerText(i);
                     layerList.AddItem(s);
                 }
 
+                // get the display image from the program
                 updateCanvasImage();
             }
         }
@@ -325,6 +343,22 @@ namespace msgc
         }
 
         // layer
+        private void newLayerToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogNewLayer newLayerMessageBox = new DialogNewLayer();
+            DialogResult result = newLayerMessageBox.ShowDialog();
+            if (result == DialogResult.OK)
+            {
+                string name = newLayerMessageBox.m_name;
+
+                Size size = new Size(
+                    newLayerMessageBox.m_width,
+                    newLayerMessageBox.m_height);
+
+                m_program.addLayer(name, size, new Point(0, 0));
+                updateCanvasImage();
+            }
+        }
 
         // tools
 
@@ -344,7 +378,7 @@ namespace msgc
                 "\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|" +
                 "\n__________________________________________________________________________________";
 
-            DialogMessage messageBox = new DialogMessage(name, text, 500, 300);
+            DialogMessage messageBox = new DialogMessage(name, text);
             messageBox.ShowDialog();
         }
 
@@ -361,7 +395,7 @@ namespace msgc
                 "\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|" +
                 "\n__________________________________________________________________________________";
 
-            DialogMessage messageBox = new DialogMessage(name, text, 500, 300);
+            DialogMessage messageBox = new DialogMessage(name, text);
             messageBox.ShowDialog();
         }
         private void testDialogToolStripMenuItem_Click(object sender, EventArgs e)
@@ -382,11 +416,56 @@ namespace msgc
         {
             m_program.setBrushMode(BlendMode.Erase, BlendMode.Erase);
         }
+        private void button_square_brush_Click(object sender, EventArgs e)
+        {
+            button_round_brush.BackColor = Color.Transparent;
+            button_square_brush.BackColor = Color.Black;
+
+            Bitmap brushImage = new Bitmap(30, 30);
+            for (int i = 0; i < brushImage.Size.Height; i++)
+                for (int j = 0; j < brushImage.Size.Width; j++)
+                {
+                    brushImage.SetPixel(j, i, Color.Black);
+                }
+            m_program.setBrushImage(brushImage);
+        }
+
+        private void button_round_brush_Click(object sender, EventArgs e)
+        {
+            button_round_brush.BackColor = Color.Black;
+            button_square_brush.BackColor = Color.Transparent;
+
+            Bitmap brushImage;
+            string dir = m_program.u_environment.getBrushDirectory();
+            dir = dir + @"//standard_round.png";
+            if (System.IO.File.Exists(dir))
+            {
+                brushImage = new Bitmap(dir);
+            }
+            else
+            {
+                Console.Write("\nDefault brush not found: " + dir + "\nCreating new brush");
+                Bitmap img = new Bitmap(30, 30, PixelFormat.Format32bppArgb);
+                using (Graphics gr = Graphics.FromImage(img))
+                {
+                    gr.Clear(Color.Black);
+                }
+                brushImage = img;
+                for (int i = 0; i < brushImage.Size.Height; i++)
+                    for (int j = 0; j < brushImage.Size.Width; j++)
+                    {
+                        Color c = brushImage.GetPixel(j, i);
+                        if ((j + i) % 2 == 1)
+                            brushImage.SetPixel(j, i, Color.Transparent);
+                    }
+            }
+            m_program.setBrushImage(brushImage);
+        }
 
         /////////////////////////////////////
-        // text input
+        // color text input
         /////////////////////////////////////
-        
+
         private int stringToByteValue(string s, int failValue)
         {
             int v = failValue;
@@ -597,15 +676,22 @@ namespace msgc
             updateCanvasImage();
         }
 
+        /// <summary>
+        /// Gets the image to display from the program, replaces the currently displaying image and refreshes the form.
+        /// </summary>
         private void updateCanvasImage()
         {
             if (display_canvas.Image != null)
                 display_canvas.Image.Dispose();
 
-            display_canvas.Image = m_program.getCanvasImageCopy();
+            Bitmap img = m_program.getCanvasImageCopy();
+
+            display_canvas.Size = img.Size;
+            display_canvas.Image = img;
+            
             display_canvas.Refresh();
         }
-        
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /////                                                                                                    ////
@@ -616,52 +702,6 @@ namespace msgc
 
         private void doesNothing() { /*   ONLY EXISTS SO THAT GENERATED CODE APPEARS BELOW HERE    */}
 
-        private void button_square_brush_Click(object sender, EventArgs e)
-        {
-            button_round_brush.BackColor = Color.Transparent;
-            button_square_brush.BackColor = Color.Black;
-
-            Bitmap brushImage = new Bitmap(30, 30);
-            for (int i = 0; i < brushImage.Size.Height; i++)
-                for (int j = 0; j < brushImage.Size.Width; j++)
-                {
-                    brushImage.SetPixel(j, i, Color.Black);
-                }
-            m_program.setBrushImage(brushImage);
-        }
-
-        private void button_round_brush_Click(object sender, EventArgs e)
-        {
-            button_round_brush.BackColor = Color.Black;
-            button_square_brush.BackColor = Color.Transparent;
-
-            Bitmap brushImage;
-            string dir = m_program.u_environment.getBrushDirectory();
-            dir = dir + @"//standard_round.png";
-            if (System.IO.File.Exists(dir))
-            {
-                brushImage = new Bitmap(dir);
-            }
-            else
-            {
-                Console.Write("\nDefault brush not found: " + dir + "\nCreating new brush");
-                Bitmap img = new Bitmap(30, 30, PixelFormat.Format32bppArgb);
-                using (Graphics gr = Graphics.FromImage(img))
-                {
-                    gr.Clear(Color.Black);
-                }
-                brushImage = img;
-                for (int i = 0; i < brushImage.Size.Height; i++)
-                    for (int j = 0; j < brushImage.Size.Width; j++)
-                    {
-                        Color c = brushImage.GetPixel(j, i);
-                        if ((j + i) % 2 == 1)
-                            brushImage.SetPixel(j, i, Color.Transparent);
-                    }
-            }
-            m_program.setBrushImage(brushImage);
-        }
-        
         private void runUnitTests()
         {
 
@@ -690,23 +730,5 @@ namespace msgc
         {
 
         }
-
-        private void newLayerToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            DialogNewLayer newLayerMessageBox = new DialogNewLayer();
-            DialogResult result = newLayerMessageBox.ShowDialog();
-            if (result == DialogResult.OK)
-            {
-                string name = newLayerMessageBox.m_name;
-                
-                Size size = new Size(
-                    newLayerMessageBox.m_width,
-                    newLayerMessageBox.m_height);
-
-                m_program.addLayer(name, size, new Point(0, 0));
-                updateCanvasImage();
-            }
-
-        }
-    }
-}
+    } // END FormMain
+} // END namespace msgc

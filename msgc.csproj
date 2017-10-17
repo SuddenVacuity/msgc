@@ -81,9 +81,6 @@
     <Compile Include="source\Interface\Windows\WinForms\Controls\TextBoxMarked.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="source\Interface\Windows\WinForms\Controls\TextBoxNumberMarked.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="source\Interface\Windows\WinForms\Dialogs\DialogMessage.cs">
       <SubType>Form</SubType>
     </Compile>

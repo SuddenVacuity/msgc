@@ -6,10 +6,10 @@ public class SkinnedWindow : Form
     {
         this.Name = "Window";
         this.Text = "Window Text";
-        this.Size = InterfaceSkin.WindowSizeNormal;
         this.BackColor = InterfaceSkin.WindowColorBackground;
         this.ForeColor = InterfaceSkin.WindowColorText;
         this.Padding = InterfaceSkin.WindowPadding;
         this.FormBorderStyle = FormBorderStyle;
+        this.AutoSize = true;
     }
 }
